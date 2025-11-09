@@ -1,11 +1,36 @@
 import { Link } from 'react-router-dom'
+import { useState, useEffect } from 'react'
 import './App.css'
 
 // Import videos
 import backgroundVideo from './assets/videos/humanExperienceVideoCollage.mp4'
-import titleAnimation from './assets/title-animation.webm'
+
+// Import frames
+import frame1 from './assets/title-frames-transparent/frame1.png'
+import frame2 from './assets/title-frames-transparent/frame2.png'
+import frame3 from './assets/title-frames-transparent/frame3.png'
+import frame4 from './assets/title-frames-transparent/frame4.png'
+import frame5 from './assets/title-frames-transparent/frame5.png'
+import frame6 from './assets/title-frames-transparent/frame6.png'
+import frame7 from './assets/title-frames-transparent/frame7.png'
+import frame8 from './assets/title-frames-transparent/frame8.png'
+import frame9 from './assets/title-frames-transparent/frame9.png'
+import frame10 from './assets/title-frames-transparent/frame10.png'
+import frame11 from './assets/title-frames-transparent/frame11.png'
+import frame12 from './assets/title-frames-transparent/frame12.png'
+
+const frames = [frame1, frame2, frame3, frame4, frame5, frame6, frame7, frame8, frame9, frame10, frame11, frame12]
 
 function App() {
+  const [currentFrame, setCurrentFrame] = useState(0)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFrame((prev) => (prev + 1) % frames.length)
+    }, 100) // 100ms per frame = 10 fps
+
+    return () => clearInterval(interval)
+  }, [])
 
   return (
     <div className="app">
@@ -14,15 +39,11 @@ function App() {
       </video>
       <div className="content">
         <Link to="/explore" className="frame-link">
-          <video 
-            autoPlay 
-            loop 
-            muted 
-            playsInline
+          <img 
+            src={frames[currentFrame]} 
+            alt="The Human Experience"
             className="frame-animation"
-          >
-            <source src={titleAnimation} type="video/webm" />
-          </video>
+          />
         </Link>
       </div>
     </div>
