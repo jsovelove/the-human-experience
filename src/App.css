@@ -45,44 +45,14 @@
   opacity: 0.8;
 }
 
-/* Sprite sheet animation */
-.sprite-animation-container {
-  width: 950px;
-  height: 181px;
-  background-image: url('./assets/title-sprite-sheet.png');
-  background-repeat: no-repeat;
-  background-position: 0 0;
-  animation: sprite-frames 1.2s steps(12) infinite;
+/* Frame animation */
+.frame-animation {
   max-width: 90vw;
   max-height: 90vh;
-}
-
-/* Responsive sizing */
-@media (max-width: 1000px) {
-  .sprite-animation-container {
-    transform: scale(0.8);
-  }
-}
-
-@media (max-width: 768px) {
-  .sprite-animation-container {
-    transform: scale(0.6);
-  }
-}
-
-@media (max-width: 480px) {
-  .sprite-animation-container {
-    transform: scale(0.4);
-  }
-}
-
-@keyframes sprite-frames {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: -11400px 0;
-  }
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  display: block;
 }
 
 /* Loading Screen */
