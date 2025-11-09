@@ -5,25 +5,9 @@ import './App.css'
 // Import videos
 import backgroundVideo from './assets/videos/humanExperienceVideoCollage.mp4'
 import diagramImage from './assets/diagram.jpg'
-
-// Import frames
-import frame1 from './assets/title-frames-transparent/frame1.png'
-import frame2 from './assets/title-frames-transparent/frame2.png'
-import frame3 from './assets/title-frames-transparent/frame3.png'
-import frame4 from './assets/title-frames-transparent/frame4.png'
-import frame5 from './assets/title-frames-transparent/frame5.png'
-import frame6 from './assets/title-frames-transparent/frame6.png'
-import frame7 from './assets/title-frames-transparent/frame7.png'
-import frame8 from './assets/title-frames-transparent/frame8.png'
-import frame9 from './assets/title-frames-transparent/frame9.png'
-import frame10 from './assets/title-frames-transparent/frame10.png'
-import frame11 from './assets/title-frames-transparent/frame11.png'
-import frame12 from './assets/title-frames-transparent/frame12.png'
-
-const frames = [frame1, frame2, frame3, frame4, frame5, frame6, frame7, frame8, frame9, frame10, frame11, frame12]
+import spriteSheet from './assets/title-sprite-sheet.png'
 
 function App() {
-  const [currentFrame, setCurrentFrame] = useState(0)
   const [isLoading, setIsLoading] = useState(true)
   const [loadProgress, setLoadProgress] = useState(0)
   const videoRef = useRef(null)
@@ -31,21 +15,19 @@ function App() {
   useEffect(() => {
     const preloadAssets = async () => {
       try {
-        const totalAssets = frames.length + 2 // frames + video + diagram
+        const totalAssets = 3 // sprite sheet + video + diagram
         let loadedAssets = 0
 
-        // Preload all PNG frames
-        const imagePromises = frames.map((src) => {
-          return new Promise((resolve, reject) => {
-            const img = new Image()
-            img.onload = () => {
-              loadedAssets++
-              setLoadProgress(Math.round((loadedAssets / totalAssets) * 100))
-              resolve()
-            }
-            img.onerror = reject
-            img.src = src
-          })
+        // Preload sprite sheet
+        const spritePromise = new Promise((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => {
+            loadedAssets++
+            setLoadProgress(Math.round((loadedAssets / totalAssets) * 100))
+            resolve()
+          }
+          img.onerror = reject
+          img.src = spriteSheet
         })
 
         // Preload diagram image
@@ -60,7 +42,7 @@ function App() {
           img.src = diagramImage
         })
 
-        await Promise.all([...imagePromises, diagramPromise])
+        await Promise.all([spritePromise, diagramPromise])
 
         // Preload video
         if (videoRef.current) {
@@ -89,16 +71,6 @@ function App() {
 
     preloadAssets()
   }, [])
-
-  useEffect(() => {
-    if (isLoading) return
-
-    const interval = setInterval(() => {
-      setCurrentFrame((prev) => (prev + 1) % frames.length)
-    }, 100) // 100ms per frame = 10 fps
-
-    return () => clearInterval(interval)
-  }, [isLoading])
 
   if (isLoading) {
     return (
@@ -129,11 +101,7 @@ function App() {
       </video>
       <div className="content">
         <Link to="/explore" className="frame-link">
-          <img 
-            src={frames[currentFrame]} 
-            alt="The Human Experience"
-            className="frame-animation"
-          />
+          <div className="sprite-animation-container"></div>
         </Link>
       </div>
     </div>

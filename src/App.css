@@ -45,30 +45,43 @@
   opacity: 0.8;
 }
 
-.frame-animation {
-  max-width: 90%;
+/* Sprite sheet animation */
+.sprite-animation-container {
+  width: 950px;
+  height: 181px;
+  background-image: url('./assets/title-sprite-sheet.png');
+  background-repeat: no-repeat;
+  background-position: 0 0;
+  animation: sprite-frames 1.2s steps(12) infinite;
+  max-width: 90vw;
   max-height: 90vh;
-  width: auto;
-  height: auto;
-  object-fit: contain;
-  display: block;
 }
 
-/* Sprite sheet animation */
-.sprite-animation {
-  width: 800px; /* Adjust based on your frame width */
-  height: 400px; /* Adjust based on your frame height */
-  background-size: 1200% 100%; /* 12 frames = 1200% */
-  background-repeat: no-repeat;
-  animation: sprite-frames 1.2s steps(12) infinite; /* 12 frames, 100ms each */
+/* Responsive sizing */
+@media (max-width: 1000px) {
+  .sprite-animation-container {
+    transform: scale(0.8);
+  }
+}
+
+@media (max-width: 768px) {
+  .sprite-animation-container {
+    transform: scale(0.6);
+  }
+}
+
+@media (max-width: 480px) {
+  .sprite-animation-container {
+    transform: scale(0.4);
+  }
 }
 
 @keyframes sprite-frames {
-  0% {
-    background-position: 0% 0%;
+  from {
+    background-position: 0 0;
   }
-  100% {
-    background-position: 100% 0%;
+  to {
+    background-position: -11400px 0;
   }
 }
 
