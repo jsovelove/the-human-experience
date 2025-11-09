@@ -53,3 +53,21 @@
   object-fit: contain;
   display: block;
 }
+
+/* Sprite sheet animation */
+.sprite-animation {
+  width: 800px; /* Adjust based on your frame width */
+  height: 400px; /* Adjust based on your frame height */
+  background-size: 1200% 100%; /* 12 frames = 1200% */
+  background-repeat: no-repeat;
+  animation: sprite-frames 1.2s steps(12) infinite; /* 12 frames, 100ms each */
+}
+
+@keyframes sprite-frames {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 100% 0%;
+  }
+}
