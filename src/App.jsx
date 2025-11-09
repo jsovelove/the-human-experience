@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import './App.css'
 
+// Import video
+import backgroundVideo from './assets/videos/humanExperienceVideoCollage.mp4'
+
 // Import all frames (transparent versions)
 import frame1 from './assets/title-frames-transparent/frame1.png'
 import frame2 from './assets/title-frames-transparent/frame2.png'
@@ -35,7 +38,7 @@ function App() {
   return (
     <div className="app">
       <video className="background-video" autoPlay loop muted playsInline>
-        <source src="/src/assets/videos/humanExperienceVideoCollage.mp4" type="video/mp4" />
+        <source src={backgroundVideo} type="video/mp4" />
       </video>
       <div className="content">
         <Link to="/explore" className="frame-link">
