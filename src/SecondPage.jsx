@@ -58,15 +58,26 @@ function SecondPage() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Draw all layers normally first
+    // Draw all layers slightly dimmed so the hovered one pops consistently
+    if (hoveredLayer) {
+      ctx.save()
+      ctx.globalAlpha = 0.4
+    }
+
     loadedImages.forEach((layer) => {
       ctx.drawImage(layer.image, 0, 0, canvas.width, canvas.height)
     })
 
-    // If there's a hovered layer, draw it again with a much stronger glow on top
+    if (hoveredLayer) {
+      ctx.restore()
+    }
+
+    // If there's a hovered layer, draw it again with a strong glow on top
     if (hoveredLayer) {
       const hoveredLayerObj = loadedImages.find(l => l.name === hoveredLayer)
       if (hoveredLayerObj) {
+        ctx.save()
+
         // Inner bright glow
         ctx.shadowColor = 'rgba(255, 255, 255, 1)'
         ctx.shadowBlur = 40
@@ -82,9 +93,7 @@ function SecondPage() {
         ctx.shadowBlur = 120
         ctx.drawImage(hoveredLayerObj.image, 0, 0, canvas.width, canvas.height)
 
-        // Reset shadow
-        ctx.shadowColor = 'transparent'
-        ctx.shadowBlur = 0
+        ctx.restore()
       }
     }
   }, [loadedImages, hoveredLayer, canvasSize])
