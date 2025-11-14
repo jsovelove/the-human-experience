@@ -1,5 +1,6 @@
 import './App.css'
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import baseImage from './assets/diagram/base.webp'
 import godImage from './assets/diagram/god.webp'
 import loveImage from './assets/diagram/love.webp'
@@ -10,17 +11,18 @@ import soulImage from './assets/diagram/soul.webp'
 function SecondPage() {
   const canvasRef = useRef(null)
   const containerRef = useRef(null)
+  const navigate = useNavigate()
   const [hoveredLayer, setHoveredLayer] = useState(null)
   const [loadedImages, setLoadedImages] = useState([])
   const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 })
 
   const layers = [
     { src: baseImage, name: 'base', link: null },
-    { src: godImage, name: 'god', link: '#god' },
-    { src: loveImage, name: 'love', link: '#love' },
-    { src: purposeImage, name: 'purpose', link: '#purpose' },
-    { src: selfImage, name: 'self', link: '#self' },
-    { src: soulImage, name: 'soul', link: '#soul' },
+    { src: godImage, name: 'god', link: '/god' },
+    { src: loveImage, name: 'love', link: '/love' },
+    { src: purposeImage, name: 'purpose', link: '/purpose' },
+    { src: selfImage, name: 'self', link: '/self' },
+    { src: soulImage, name: 'soul', link: '/soul' },
   ]
 
   // Load all images
@@ -58,7 +60,7 @@ function SecondPage() {
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height)
 
-    // Draw all layers slightly dimmed so the hovered one pops consistently
+    // Draw all layers slightly dimmed if hovering
     if (hoveredLayer) {
       ctx.save()
       ctx.globalAlpha = 0.4
@@ -141,10 +143,55 @@ function SecondPage() {
   }
 
   const handleClick = (e) => {
-    if (hoveredLayer) {
-      const layer = loadedImages.find(l => l.name === hoveredLayer)
+    if (!canvasRef.current || loadedImages.length === 0) return
+
+    const canvas = canvasRef.current
+    const rect = canvas.getBoundingClientRect()
+    
+    // Handle both mouse and touch events
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY
+    
+    const x = ((clientX - rect.left) / rect.width) * canvas.width
+    const y = ((clientY - rect.top) / rect.height) * canvas.height
+
+    // Find which layer was clicked
+    let clickedLayerName = null
+    for (let i = loadedImages.length - 1; i >= 0; i--) {
+      const layer = loadedImages[i]
+      if (!layer.link) continue
+
+      // Check if click is within layer's visible area
+      const expandRadius = 25
+      for (let dy = -expandRadius; dy <= expandRadius; dy += 5) {
+        for (let dx = -expandRadius; dx <= expandRadius; dx += 5) {
+          const checkX = Math.floor(x + dx)
+          const checkY = Math.floor(y + dy)
+          
+          if (checkX >= 0 && checkX < canvas.width && checkY >= 0 && checkY < canvas.height) {
+            const tempCanvas = document.createElement('canvas')
+            tempCanvas.width = canvas.width
+            tempCanvas.height = canvas.height
+            const tempCtx = tempCanvas.getContext('2d')
+            tempCtx.drawImage(layer.image, 0, 0, canvas.width, canvas.height)
+            
+            const pixelData = tempCtx.getImageData(checkX, checkY, 1, 1).data
+            if (pixelData[3] > 10) {
+              clickedLayerName = layer.name
+              break
+            }
+          }
+        }
+        if (clickedLayerName) break
+      }
+      if (clickedLayerName) break
+    }
+
+    if (clickedLayerName) {
+      const layer = loadedImages.find(l => l.name === clickedLayerName)
       if (layer?.link) {
-        window.location.href = layer.link
+        // Navigate immediately
+        navigate(layer.link)
       }
     }
   }
@@ -160,10 +207,12 @@ function SecondPage() {
             onMouseMove={handleMouseMove}
             onMouseLeave={() => setHoveredLayer(null)}
             onClick={handleClick}
+            onTouchStart={handleClick}
             style={{
               maxWidth: '90vw',
               maxHeight: '90vh',
-              cursor: hoveredLayer ? 'pointer' : 'default'
+              cursor: hoveredLayer ? 'pointer' : 'default',
+              touchAction: 'manipulation'
             }}
           />
         </div>
