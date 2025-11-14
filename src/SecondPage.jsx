@@ -1,11 +1,11 @@
 import './App.css'
 import { useEffect, useRef, useState } from 'react'
-import baseImage from './assets/diagram/base.png'
-import godImage from './assets/diagram/god.png'
-import loveImage from './assets/diagram/love.png'
-import purposeImage from './assets/diagram/purpose.png'
-import selfImage from './assets/diagram/self.png'
-import soulImage from './assets/diagram/soul.png'
+import baseImage from './assets/diagram/base.webp'
+import godImage from './assets/diagram/god.webp'
+import loveImage from './assets/diagram/love.webp'
+import purposeImage from './assets/diagram/purpose.webp'
+import selfImage from './assets/diagram/self.webp'
+import soulImage from './assets/diagram/soul.webp'
 
 function SecondPage() {
   const canvasRef = useRef(null)
