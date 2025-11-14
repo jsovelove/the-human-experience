@@ -101,3 +101,45 @@
   transition: width 0.3s ease;
   border-radius: 2px;
 }
+
+/* Layered Diagram */
+.layered-diagram {
+  position: relative;
+  max-width: 90vw;
+  max-height: 90vh;
+  width: auto;
+  height: auto;
+  display: inline-block;
+}
+
+.layered-diagram > *:first-child {
+  position: relative;
+  display: block;
+}
+
+.layered-diagram > *:not(:first-child) {
+  position: absolute;
+  top: 0;
+  left: 0;
+}
+
+.diagram-layer {
+  width: 100%;
+  height: auto;
+  display: block;
+  transition: filter 0.3s ease;
+  pointer-events: none;
+}
+
+.diagram-layer-link {
+  width: 100%;
+  display: block;
+  text-decoration: none;
+  pointer-events: auto;
+}
+
+.diagram-layer-link:hover .diagram-layer {
+  filter: drop-shadow(0 0 20px rgba(255, 255, 255, 0.8))
+          drop-shadow(0 0 40px rgba(255, 255, 255, 0.6))
+          drop-shadow(0 0 60px rgba(255, 255, 255, 0.4));
+}
