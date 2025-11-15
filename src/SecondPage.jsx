@@ -127,7 +127,8 @@ function SecondPage() {
       tempCtx.drawImage(layer.image, 0, 0, canvas.width, canvas.height)
 
       // Define a square region around the cursor to make the hit area more generous
-      const radius = 25
+      const dpr = window.devicePixelRatio || 1
+      const radius = 25 * dpr
       const startX = Math.max(0, Math.floor(x - radius))
       const startY = Math.max(0, Math.floor(y - radius))
       const width = Math.min(canvas.width - startX, radius * 2 + 1)
@@ -170,9 +171,11 @@ function SecondPage() {
       if (!layer.link) continue
 
       // Check if click is within layer's visible area
-      const expandRadius = 25
-      for (let dy = -expandRadius; dy <= expandRadius; dy += 5) {
-        for (let dx = -expandRadius; dx <= expandRadius; dx += 5) {
+      const dpr = window.devicePixelRatio || 1
+      const expandRadius = 25 * dpr
+      const step = 5 * dpr
+      for (let dy = -expandRadius; dy <= expandRadius; dy += step) {
+        for (let dx = -expandRadius; dx <= expandRadius; dx += step) {
           const checkX = Math.floor(x + dx)
           const checkY = Math.floor(y + dy)
           
