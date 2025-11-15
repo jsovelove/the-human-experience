@@ -42,9 +42,13 @@ function SecondPage() {
         const maxWidth = window.innerWidth * 0.9
         const maxHeight = window.innerHeight * 0.9
         const scale = Math.min(maxWidth / img.width, maxHeight / img.height, 1)
+        const dpr = window.devicePixelRatio || 1
+        
         setCanvasSize({
-          width: img.width * scale,
-          height: img.height * scale
+          width: img.width * scale * dpr,
+          height: img.height * scale * dpr,
+          displayWidth: img.width * scale,
+          displayHeight: img.height * scale
         })
       }
     })
@@ -105,8 +109,10 @@ function SecondPage() {
 
     const canvas = canvasRef.current
     const rect = canvas.getBoundingClientRect()
-    const x = ((e.clientX - rect.left) / rect.width) * canvas.width
-    const y = ((e.clientY - rect.top) / rect.height) * canvas.height
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
 
     // Check layers from top to bottom
     for (let i = loadedImages.length - 1; i >= 0; i--) {
@@ -152,8 +158,10 @@ function SecondPage() {
     const clientX = e.touches ? e.touches[0].clientX : e.clientX
     const clientY = e.touches ? e.touches[0].clientY : e.clientY
     
-    const x = ((clientX - rect.left) / rect.width) * canvas.width
-    const y = ((clientY - rect.top) / rect.height) * canvas.height
+    const scaleX = canvas.width / rect.width
+    const scaleY = canvas.height / rect.height
+    const x = (clientX - rect.left) * scaleX
+    const y = (clientY - rect.top) * scaleY
 
     // Find which layer was clicked
     let clickedLayerName = null
@@ -209,6 +217,8 @@ function SecondPage() {
             onClick={handleClick}
             onTouchStart={handleClick}
             style={{
+              width: canvasSize.displayWidth ? `${canvasSize.displayWidth}px` : '90vw',
+              height: canvasSize.displayHeight ? `${canvasSize.displayHeight}px` : '90vh',
               maxWidth: '90vw',
               maxHeight: '90vh',
               cursor: hoveredLayer ? 'pointer' : 'default',
