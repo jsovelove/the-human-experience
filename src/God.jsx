@@ -407,15 +407,19 @@ function God() {
         </Suspense>
       </Canvas>
       
-      {/* Navigation controls */}
+      {/* Navigation controls - centered at bottom */}
       <div style={{
         position: 'fixed',
         bottom: '2rem',
-        right: '2rem',
+        left: '50%',
+        transform: 'translateX(-50%)',
         zIndex: 10,
         display: 'flex',
         alignItems: 'center',
-        gap: '1.5rem'
+        gap: '1.5rem',
+        opacity: showIntro ? 0 : 1,
+        transition: 'opacity 1s ease',
+        pointerEvents: showIntro ? 'none' : 'auto'
       }}>
         <button
           onClick={() => {
@@ -426,19 +430,19 @@ function God() {
             background: 'transparent',
             border: 'none',
             color: 'white',
-            fontSize: '0.9rem',
+            fontSize: '0.8rem',
             cursor: 'pointer',
             transition: 'opacity 0.3s ease',
             opacity: isZoomedIn && !showData ? 1 : 0.5,
             padding: 0,
             outline: 'none',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.05em',
             fontWeight: isZoomedIn && !showData ? '600' : '400'
           }}
           onMouseEnter={(e) => e.target.style.opacity = '1'}
           onMouseLeave={(e) => e.target.style.opacity = isZoomedIn && !showData ? '1' : '0.5'}
         >
-          IMAGES
+          DRAWINGS
         </button>
         
         <button
@@ -450,13 +454,13 @@ function God() {
             background: 'transparent',
             border: 'none',
             color: 'white',
-            fontSize: '0.9rem',
+            fontSize: '0.8rem',
             cursor: 'pointer',
             transition: 'opacity 0.3s ease',
             opacity: showData ? 1 : 0.5,
             padding: 0,
             outline: 'none',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.05em',
             fontWeight: showData ? '600' : '400'
           }}
           onMouseEnter={(e) => e.target.style.opacity = '1'}
@@ -464,6 +468,28 @@ function God() {
         >
           DATA
         </button>
+        
+        <Link 
+          to="/draw-god" 
+          style={{ 
+            color: 'white', 
+            textDecoration: 'none', 
+            fontSize: '0.8rem',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'opacity 0.3s ease',
+            opacity: 0.5,
+            padding: 0,
+            outline: 'none',
+            letterSpacing: '0.05em',
+            fontWeight: '400',
+            background: 'transparent'
+          }}
+          onMouseEnter={(e) => e.target.style.opacity = '1'}
+          onMouseLeave={(e) => e.target.style.opacity = '0.5'}
+        >
+          PLEASE DRAW GOD
+        </Link>
       </div>
 
       {/* Photo navigation arrows - only show when viewing images */}
@@ -476,7 +502,10 @@ function God() {
           zIndex: 10,
           display: 'flex',
           alignItems: 'center',
-          gap: '2rem'
+          gap: '2rem',
+          opacity: showIntro ? 0 : 1,
+          transition: 'opacity 1s ease',
+          pointerEvents: showIntro ? 'none' : 'auto'
         }}>
           <button
             onClick={goToPrevPhoto}
@@ -550,26 +579,19 @@ function God() {
           borderRadius: '12px',
           width: '90vw',
           maxWidth: '1400px',
-          maxHeight: '85vh',
-          overflowY: 'auto',
+          height: '85vh',
+          overflow: 'hidden',
           border: '1px solid rgba(255, 255, 255, 0.2)',
-          backdropFilter: 'blur(10px)'
+          backdropFilter: 'blur(10px)',
+          display: 'flex',
+          flexDirection: 'column'
         }}>
           <div style={{
             display: 'flex',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             alignItems: 'center',
-            marginBottom: '2rem'
+            marginBottom: '1rem'
           }}>
-            <h2 style={{ 
-              color: 'white', 
-              margin: 0,
-              fontSize: '2rem',
-              fontWeight: '200',
-              letterSpacing: '0.3em'
-            }}>
-              LIKERT SCALE DATA
-            </h2>
             <button
               onClick={() => setShowData(false)}
               style={{
@@ -589,81 +611,54 @@ function God() {
             </button>
           </div>
           
-          {likertData.length > 0 ? (
-            <LikertScale data={likertData} />
-          ) : (
-            <div style={{ 
-              color: 'rgba(255, 255, 255, 0.5)',
-              textAlign: 'center',
-              padding: '2rem',
-              fontSize: '1.1rem'
-            }}>
-              Loading data...
-            </div>
-          )}
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            {likertData.length > 0 ? (
+              <LikertScale data={likertData} />
+            ) : (
+              <div style={{ 
+                color: 'rgba(255, 255, 255, 0.5)',
+                textAlign: 'center',
+                padding: '2rem',
+                fontSize: '1.1rem'
+              }}>
+                Loading data...
+              </div>
+            )}
+          </div>
         </div>
       )}
 
-      {/* Bottom left buttons */}
-      <div style={{
-        position: 'fixed',
-        bottom: '2rem',
-        left: '2rem',
-        zIndex: 10,
-        display: 'flex',
-        gap: '1rem'
-      }}>
-        <Link 
-          to="/explore" 
-          style={{ 
-            color: 'white', 
-            textDecoration: 'none', 
-            fontSize: '0.8rem',
-            border: '1px solid rgba(255,255,255,0.3)',
-            padding: '0.6rem 1.2rem',
-            borderRadius: '4px',
-            transition: 'all 0.3s ease',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(10px)'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = 'white'
-            e.target.style.color = 'black'
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
-            e.target.style.color = 'white'
-          }}
-        >
-          ← Back
-        </Link>
-        
-        <Link 
-          to="/draw-god" 
-          style={{ 
-            color: 'white', 
-            textDecoration: 'none', 
-            fontSize: '0.8rem',
-            border: '1px solid rgba(255,255,255,0.3)',
-            padding: '0.6rem 1.2rem',
-            borderRadius: '4px',
-            transition: 'all 0.3s ease',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            backdropFilter: 'blur(10px)',
-            letterSpacing: '0.05em'
-          }}
-          onMouseEnter={(e) => {
-            e.target.style.backgroundColor = 'white'
-            e.target.style.color = 'black'
-          }}
-          onMouseLeave={(e) => {
-            e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
-            e.target.style.color = 'white'
-          }}
-        >
-          PLEASE DRAW GOD →
-        </Link>
-      </div>
+      {/* Back button */}
+      <Link 
+        to="/explore" 
+        style={{ 
+          position: 'fixed',
+          bottom: '2rem',
+          left: '2rem',
+          zIndex: 10,
+          color: 'white', 
+          textDecoration: 'none', 
+          fontSize: '0.8rem',
+          border: '1px solid rgba(255,255,255,0.3)',
+          padding: '0.6rem 1.2rem',
+          borderRadius: '4px',
+          transition: 'all 0.3s ease, opacity 1s ease',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(10px)',
+          opacity: showIntro ? 0 : 1,
+          pointerEvents: showIntro ? 'none' : 'auto'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = 'white'
+          e.target.style.color = 'black'
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
+          e.target.style.color = 'white'
+        }}
+      >
+        ← Back
+      </Link>
 
     </div>
   )
