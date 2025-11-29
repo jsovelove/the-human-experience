@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
 import SecondPage from './SecondPage.jsx'
 import God from './God.jsx'
+import DrawGod from './DrawGod.jsx'
 import Love from './Love.jsx'
 import Purpose from './Purpose.jsx'
 import Self from './Self.jsx'
@@ -17,6 +18,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/" element={<App />} />
         <Route path="/explore" element={<SecondPage />} />
         <Route path="/god" element={<God />} />
+        <Route path="/draw-god" element={<DrawGod />} />
         <Route path="/love" element={<Love />} />
         <Route path="/purpose" element={<Purpose />} />
         <Route path="/self" element={<Self />} />

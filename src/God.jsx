@@ -16,11 +16,13 @@ function CameraController({ targetPosition, isZoomedIn, defaultPosition, control
   const { camera } = useThree()
   const smoothedPosition = useRef(new THREE.Vector3(...defaultPosition))
   const smoothedLookAt = useRef(new THREE.Vector3(0, 0, 0))
+  const wasZoomedIn = useRef(false)
   
   useFrame(() => {
-    let goalPosition, goalLookAt
-    
     if (isZoomedIn && targetPosition) {
+      // Zoomed into an image - animate to photo
+      wasZoomedIn.current = true
+      
       const photoPos = new THREE.Vector3(...targetPosition)
       const defaultPos = new THREE.Vector3(...defaultPosition)
       
@@ -31,23 +33,42 @@ function CameraController({ targetPosition, isZoomedIn, defaultPosition, control
       
       // Keep camera slightly away from photo along this direction
       const viewDistance = Math.min(distance, 2.5)
-      goalPosition = photoPos.clone().add(dir.multiplyScalar(viewDistance))
-      goalLookAt = photoPos.clone()
-    } else {
-      goalPosition = new THREE.Vector3(...defaultPosition)
-      goalLookAt = new THREE.Vector3(0, 0, 0)
+      const goalPosition = photoPos.clone().add(dir.multiplyScalar(viewDistance))
+      const goalLookAt = photoPos.clone()
+      
+      smoothedPosition.current.lerp(goalPosition, 0.05)
+      smoothedLookAt.current.lerp(goalLookAt, 0.05)
+      
+      camera.position.copy(smoothedPosition.current)
+      camera.lookAt(smoothedLookAt.current)
+      
+      if (controlsRef && controlsRef.current) {
+        controlsRef.current.target.copy(smoothedLookAt.current)
+        controlsRef.current.update()
+      }
+    } else if (wasZoomedIn.current) {
+      // Just exited zoom mode - animate back to default position
+      const goalPosition = new THREE.Vector3(...defaultPosition)
+      const goalLookAt = new THREE.Vector3(0, 0, 0)
+      
+      smoothedPosition.current.lerp(goalPosition, 0.05)
+      smoothedLookAt.current.lerp(goalLookAt, 0.05)
+      
+      camera.position.copy(smoothedPosition.current)
+      camera.lookAt(smoothedLookAt.current)
+      
+      if (controlsRef && controlsRef.current) {
+        controlsRef.current.target.copy(smoothedLookAt.current)
+        controlsRef.current.update()
+      }
+      
+      // Check if we're close enough to default position to stop animating
+      const distanceToDefault = camera.position.distanceTo(goalPosition)
+      if (distanceToDefault < 0.1) {
+        wasZoomedIn.current = false
+      }
     }
-    
-    smoothedPosition.current.lerp(goalPosition, 0.05)
-    smoothedLookAt.current.lerp(goalLookAt, 0.05)
-    
-    camera.position.copy(smoothedPosition.current)
-    camera.lookAt(smoothedLookAt.current)
-    
-    if (controlsRef && controlsRef.current) {
-      controlsRef.current.target.copy(smoothedLookAt.current)
-      controlsRef.current.update()
-    }
+    // Otherwise, let OrbitControls handle everything
   })
   
   return null
@@ -370,11 +391,13 @@ function God() {
             controlsRef={controlsRef}
           />
           
-          {/* Orbit controls for looking around and zooming into photos */}
+          {/* Orbit controls for looking around - disabled when viewing a specific image */}
           <OrbitControls 
             ref={controlsRef}
+            enabled={!isZoomedIn}
             enableZoom={true}
             enablePan={true}
+            enableRotate={true}
             autoRotate={false}
             minDistance={5}
             maxDistance={60}
@@ -581,35 +604,66 @@ function God() {
         </div>
       )}
 
-      {/* Back button */}
-      <Link 
-        to="/explore" 
-        style={{ 
-          position: 'fixed',
-          bottom: '2rem',
-          left: '2rem',
-          zIndex: 10,
-          color: 'white', 
-          textDecoration: 'none', 
-          fontSize: '0.8rem',
-          border: '1px solid rgba(255,255,255,0.3)',
-          padding: '0.6rem 1.2rem',
-          borderRadius: '4px',
-          transition: 'all 0.3s ease',
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(10px)'
-        }}
-        onMouseEnter={(e) => {
-          e.target.style.backgroundColor = 'white'
-          e.target.style.color = 'black'
-        }}
-        onMouseLeave={(e) => {
-          e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
-          e.target.style.color = 'white'
-        }}
-      >
-        ← Back
-      </Link>
+      {/* Bottom left buttons */}
+      <div style={{
+        position: 'fixed',
+        bottom: '2rem',
+        left: '2rem',
+        zIndex: 10,
+        display: 'flex',
+        gap: '1rem'
+      }}>
+        <Link 
+          to="/explore" 
+          style={{ 
+            color: 'white', 
+            textDecoration: 'none', 
+            fontSize: '0.8rem',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '0.6rem 1.2rem',
+            borderRadius: '4px',
+            transition: 'all 0.3s ease',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(10px)'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = 'white'
+            e.target.style.color = 'black'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
+            e.target.style.color = 'white'
+          }}
+        >
+          ← Back
+        </Link>
+        
+        <Link 
+          to="/draw-god" 
+          style={{ 
+            color: 'white', 
+            textDecoration: 'none', 
+            fontSize: '0.8rem',
+            border: '1px solid rgba(255,255,255,0.3)',
+            padding: '0.6rem 1.2rem',
+            borderRadius: '4px',
+            transition: 'all 0.3s ease',
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            backdropFilter: 'blur(10px)',
+            letterSpacing: '0.05em'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = 'white'
+            e.target.style.color = 'black'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
+            e.target.style.color = 'white'
+          }}
+        >
+          PLEASE DRAW GOD →
+        </Link>
+      </div>
 
     </div>
   )
