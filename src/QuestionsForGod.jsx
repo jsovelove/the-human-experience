@@ -1,5 +1,5 @@
 import './App.css'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, useTexture } from '@react-three/drei'
@@ -399,6 +399,7 @@ function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting
 }
 
 function QuestionsForGod() {
+  const navigate = useNavigate()
   const cloudName = 'dgbrj4suu'
   
   const imageIds = [
@@ -474,11 +475,9 @@ function QuestionsForGod() {
           const next = prev + 0.01
           if (next >= 1) {
             clearInterval(fadeInterval)
-            // Reset after fade completes
+            // Navigate to TV scene after fade completes
             setTimeout(() => {
-              setIsSubmitting(false)
-              setFadeOverlay(0)
-              setQuestionText('')
+              navigate('/tv-scene')
             }, 500)
           }
           return next
