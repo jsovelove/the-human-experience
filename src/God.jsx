@@ -490,6 +490,28 @@ function God() {
         >
           PLEASE DRAW GOD
         </Link>
+        
+        <Link 
+          to="/questions-for-god" 
+          style={{ 
+            color: 'white', 
+            textDecoration: 'none', 
+            fontSize: '0.8rem',
+            border: 'none',
+            cursor: 'pointer',
+            transition: 'opacity 0.3s ease',
+            opacity: 0.5,
+            padding: 0,
+            outline: 'none',
+            letterSpacing: '0.05em',
+            fontWeight: '400',
+            background: 'transparent'
+          }}
+          onMouseEnter={(e) => e.target.style.opacity = '1'}
+          onMouseLeave={(e) => e.target.style.opacity = '0.5'}
+        >
+          QUESTIONS FOR GOD
+        </Link>
       </div>
 
       {/* Photo navigation arrows - only show when viewing images */}

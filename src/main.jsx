@@ -5,6 +5,7 @@ import App from './App.jsx'
 import SecondPage from './SecondPage.jsx'
 import God from './God.jsx'
 import DrawGod from './DrawGod.jsx'
+import QuestionsForGod from './QuestionsForGod.jsx'
 import Love from './Love.jsx'
 import Purpose from './Purpose.jsx'
 import Self from './Self.jsx'
@@ -19,6 +20,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/explore" element={<SecondPage />} />
         <Route path="/god" element={<God />} />
         <Route path="/draw-god" element={<DrawGod />} />
+        <Route path="/questions-for-god" element={<QuestionsForGod />} />
         <Route path="/love" element={<Love />} />
         <Route path="/purpose" element={<Purpose />} />
         <Route path="/self" element={<Self />} />
