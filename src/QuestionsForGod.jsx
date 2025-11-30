@@ -6,9 +6,50 @@ import { OrbitControls, Environment, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
-// Photo plane component positioned in 3D space with floating animation
-function PhotoPlane({ imageUrl, position, index }) {
+// Initial single image plane that morphs into grid
+function IntroPlane({ imageUrl }) {
   const meshRef = useRef()
+  const texture = useTexture(imageUrl, (loadedTexture) => {
+    loadedTexture.minFilter = THREE.LinearFilter
+    loadedTexture.generateMipmaps = false
+  })
+  
+  const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
+  const height = 6
+  const width = height * aspect
+  
+  useFrame((state) => {
+    if (meshRef.current) {
+      const time = state.clock.elapsedTime
+      const fadeOutStart = 2
+      const fadeOutDuration = 1
+      
+      if (time > fadeOutStart) {
+        const fadeProgress = Math.min((time - fadeOutStart) / fadeOutDuration, 1)
+        meshRef.current.material.opacity = 1 - fadeProgress
+      }
+    }
+  })
+  
+  return (
+    <mesh ref={meshRef} position={[0, 0, -8]}>
+      <planeGeometry args={[width, height]} />
+      <meshStandardMaterial 
+        map={texture}
+        side={THREE.DoubleSide}
+        transparent
+        opacity={1}
+        roughness={0.8}
+        metalness={0.1}
+      />
+    </mesh>
+  )
+}
+
+// Photo plane component with intro animation and floating
+function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated }) {
+  const meshRef = useRef()
+  const [localAnimated, setLocalAnimated] = useState(false)
   const texture = useTexture(imageUrl, (loadedTexture) => {
     // Optimize texture settings for better performance
     loadedTexture.minFilter = THREE.LinearFilter
@@ -24,16 +65,55 @@ function PhotoPlane({ imageUrl, position, index }) {
     if (meshRef.current) {
       const time = state.clock.elapsedTime
       
-      // Floating animation - each photo has slightly different timing
-      const floatY = Math.sin(time * 0.3 + index * 0.5) * 0.3
-      const floatX = Math.cos(time * 0.2 + index * 0.7) * 0.2
-      const floatZ = Math.sin(time * 0.25 + index * 0.3) * 0.2
+      // Phase 1: Hidden (0-2s)
+      // Phase 2: Fade in at grid position (2-3s)
+      // Phase 3: Hold at grid (3-5s)
+      // Phase 4: Fly to final position (5-8s)
       
-      meshRef.current.position.set(
-        position[0] + floatX,
-        position[1] + floatY,
-        position[2] + floatZ
-      )
+      const fadeInStart = 2
+      const fadeInDuration = 1
+      const gridHoldEnd = 5
+      const flyDuration = 3
+      const flyStart = gridHoldEnd + (index * 0.1)
+      
+      // Opacity control
+      if (time < fadeInStart) {
+        meshRef.current.material.opacity = 0
+      } else if (time < fadeInStart + fadeInDuration) {
+        const fadeProgress = (time - fadeInStart) / fadeInDuration
+        meshRef.current.material.opacity = fadeProgress * 0.7
+      } else {
+        meshRef.current.material.opacity = 0.7
+      }
+      
+      // Position control
+      const flyProgress = Math.min(Math.max((time - flyStart) / flyDuration, 0), 1)
+      
+      if (flyProgress >= 1 && !localAnimated) {
+        setLocalAnimated(true)
+      }
+      
+      let currentX, currentY, currentZ
+      
+      if (flyProgress < 1) {
+        // Animate from grid position to final position
+        const eased = 1 - Math.pow(1 - flyProgress, 3) // Ease out cubic
+        
+        currentX = THREE.MathUtils.lerp(gridPosition[0], position[0], eased)
+        currentY = THREE.MathUtils.lerp(gridPosition[1], position[1], eased)
+        currentZ = THREE.MathUtils.lerp(gridPosition[2], position[2], eased)
+      } else {
+        // Floating animation after intro
+        const floatY = Math.sin(time * 0.3 + index * 0.5) * 0.3
+        const floatX = Math.cos(time * 0.2 + index * 0.7) * 0.2
+        const floatZ = Math.sin(time * 0.25 + index * 0.3) * 0.2
+        
+        currentX = position[0] + floatX
+        currentY = position[1] + floatY
+        currentZ = position[2] + floatZ
+      }
+      
+      meshRef.current.position.set(currentX, currentY, currentZ)
       
       // Rotate to face camera (origin)
       meshRef.current.lookAt(0, 0, 0)
@@ -41,13 +121,13 @@ function PhotoPlane({ imageUrl, position, index }) {
   })
   
   return (
-    <mesh ref={meshRef} position={position}>
+    <mesh ref={meshRef} position={gridPosition}>
       <planeGeometry args={[width, height]} />
       <meshStandardMaterial 
         map={texture}
         side={THREE.DoubleSide}
         transparent
-        opacity={0.7}
+        opacity={0}
         roughness={0.8}
         metalness={0.1}
       />
@@ -55,7 +135,31 @@ function PhotoPlane({ imageUrl, position, index }) {
   )
 }
 
-// Generate positions for photos in 3D space around the camera
+// Generate grid positions for initial collage layout
+function getGridPositions(count) {
+  const positions = []
+  const cols = 4 // 4 columns
+  const rows = Math.ceil(count / cols)
+  const spacing = 2
+  const startX = -(cols - 1) * spacing / 2
+  const startY = (rows - 1) * spacing / 2
+  const zPosition = -8 // In front of camera
+  
+  for (let i = 0; i < count; i++) {
+    const col = i % cols
+    const row = Math.floor(i / cols)
+    
+    const x = startX + col * spacing
+    const y = startY - row * spacing
+    const z = zPosition
+    
+    positions.push([x, y, z])
+  }
+  
+  return positions
+}
+
+// Generate final positions for photos in 3D space around the camera
 function getPhotoPositions(count) {
   const positions = []
   const radius = 12
@@ -76,8 +180,18 @@ function getPhotoPositions(count) {
 }
 
 // Scene content with HDRI environment and photos positioned around camera
-function SceneContent({ imageUrls }) {
+function SceneContent({ imageUrls, cloudName }) {
   const photoPositions = getPhotoPositions(imageUrls.length)
+  const gridPositions = getGridPositions(imageUrls.length)
+  const [hasAnimated, setHasAnimated] = useState(false)
+  
+  const introImageUrl = `https://res.cloudinary.com/${cloudName}/image/upload/w_800,q_auto,f_auto/Screenshot_2025-11-29_162404_bbba8k.png`
+  
+  useEffect(() => {
+    // Trigger animation after a short delay
+    const timer = setTimeout(() => setHasAnimated(true), 500)
+    return () => clearTimeout(timer)
+  }, [])
   
   return (
     <>
@@ -92,13 +206,21 @@ function SceneContent({ imageUrls }) {
       <ambientLight intensity={0.6} />
       <directionalLight position={[5, 5, 5]} intensity={0.4} />
       
-      {/* Photo planes positioned around the camera */}
+      {/* Initial single image that fades out */}
+      <Suspense fallback={null}>
+        <IntroPlane imageUrl={introImageUrl} />
+      </Suspense>
+      
+      {/* Photo planes with intro animation */}
       {imageUrls.map((url, index) => (
         <Suspense key={index} fallback={null}>
           <PhotoPlane
             imageUrl={url}
             position={photoPositions[index]}
+            gridPosition={gridPositions[index]}
             index={index}
+            totalImages={imageUrls.length}
+            hasAnimated={hasAnimated}
           />
         </Suspense>
       ))}
@@ -182,7 +304,7 @@ function QuestionsForGod() {
         }}
       >
         <Suspense fallback={null}>
-          <SceneContent imageUrls={imageUrls} />
+          <SceneContent imageUrls={imageUrls} cloudName={cloudName} />
         </Suspense>
       </Canvas>
       
