@@ -9,7 +9,11 @@ import * as THREE from 'three'
 // Photo plane component positioned in 3D space with floating animation
 function PhotoPlane({ imageUrl, position, index }) {
   const meshRef = useRef()
-  const texture = useTexture(imageUrl)
+  const texture = useTexture(imageUrl, (loadedTexture) => {
+    // Optimize texture settings for better performance
+    loadedTexture.minFilter = THREE.LinearFilter
+    loadedTexture.generateMipmaps = false
+  })
   
   // Calculate aspect ratio - smaller size
   const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
@@ -77,10 +81,11 @@ function SceneContent({ imageUrls }) {
   
   return (
     <>
-      {/* HDRI Environment */}
+      {/* HDRI Environment - optimized 2K HDR */}
       <Environment 
-        files="assets/hdr/rural_evening_road_4k.hdr"
+        files="assets/hdr/plains_sunset_2k.hdr"
         background
+        resolution={512}
       />
       
       {/* Additional lighting */}
@@ -146,7 +151,10 @@ function QuestionsForGod() {
     'Screenshot_2025-11-29_164714_gtvv1y'
   ]
   
-  const imageUrls = imageIds.map(id => `https://res.cloudinary.com/${cloudName}/image/upload/${id}.png`)
+  // Use smaller, optimized versions of images for better performance
+  const imageUrls = imageIds.map(id => 
+    `https://res.cloudinary.com/${cloudName}/image/upload/w_800,q_auto,f_auto/${id}.png`
+  )
   
   return (
     <div className="app" style={{ backgroundColor: 'black', width: '100%', height: '100vh', overflow: 'hidden' }}>
