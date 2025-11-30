@@ -47,14 +47,18 @@ function IntroPlane({ imageUrl }) {
 }
 
 // Photo plane component with intro animation and floating
-function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated }) {
+function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated, selectedIndex, onSelect }) {
   const meshRef = useRef()
+  const { camera } = useThree()
   const [localAnimated, setLocalAnimated] = useState(false)
+  const [hovered, setHovered] = useState(false)
   const texture = useTexture(imageUrl, (loadedTexture) => {
     // Optimize texture settings for better performance
     loadedTexture.minFilter = THREE.LinearFilter
     loadedTexture.generateMipmaps = false
   })
+  
+  const isSelected = selectedIndex === index
   
   // Calculate aspect ratio - smaller size
   const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
@@ -93,21 +97,42 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
         setLocalAnimated(true)
       }
       
+      // Calculate floating offsets (always calculated for smooth transition)
+      const floatY = Math.sin(time * 0.3 + index * 0.5) * 0.3
+      const floatX = Math.cos(time * 0.2 + index * 0.7) * 0.2
+      const floatZ = Math.sin(time * 0.25 + index * 0.3) * 0.2
+      
       let currentX, currentY, currentZ
       
-      if (flyProgress < 1) {
-        // Animate from grid position to final position
+      // If selected, bring to front of camera in the direction it's facing
+      if (isSelected) {
+        // Get camera's forward direction
+        const cameraDirection = new THREE.Vector3()
+        camera.getWorldDirection(cameraDirection)
+        
+        // Position the drawing 7 units in front of the camera
+        const selectedPos = camera.position.clone().add(cameraDirection.multiplyScalar(7))
+        
+        const currentPos = meshRef.current.position
+        currentX = THREE.MathUtils.lerp(currentPos.x, selectedPos.x, 0.1)
+        currentY = THREE.MathUtils.lerp(currentPos.y, selectedPos.y, 0.1)
+        currentZ = THREE.MathUtils.lerp(currentPos.z, selectedPos.z, 0.1)
+      } else if (flyProgress < 1) {
+        // Animate from grid position to final position with easing
         const eased = 1 - Math.pow(1 - flyProgress, 3) // Ease out cubic
         
-        currentX = THREE.MathUtils.lerp(gridPosition[0], position[0], eased)
-        currentY = THREE.MathUtils.lerp(gridPosition[1], position[1], eased)
-        currentZ = THREE.MathUtils.lerp(gridPosition[2], position[2], eased)
-      } else {
-        // Floating animation after intro
-        const floatY = Math.sin(time * 0.3 + index * 0.5) * 0.3
-        const floatX = Math.cos(time * 0.2 + index * 0.7) * 0.2
-        const floatZ = Math.sin(time * 0.25 + index * 0.3) * 0.2
+        // Blend in floating animation towards the end of the fly animation
+        const floatBlend = Math.pow(flyProgress, 2) // Start blending in float at the end
         
+        const targetX = position[0] + (floatX * floatBlend)
+        const targetY = position[1] + (floatY * floatBlend)
+        const targetZ = position[2] + (floatZ * floatBlend)
+        
+        currentX = THREE.MathUtils.lerp(gridPosition[0], targetX, eased)
+        currentY = THREE.MathUtils.lerp(gridPosition[1], targetY, eased)
+        currentZ = THREE.MathUtils.lerp(gridPosition[2], targetZ, eased)
+      } else {
+        // Full floating animation after intro
         currentX = position[0] + floatX
         currentY = position[1] + floatY
         currentZ = position[2] + floatZ
@@ -115,13 +140,48 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
       
       meshRef.current.position.set(currentX, currentY, currentZ)
       
-      // Rotate to face camera (origin)
-      meshRef.current.lookAt(0, 0, 0)
+      // Rotate to face camera
+      if (isSelected) {
+        // When selected, face the camera directly
+        meshRef.current.lookAt(camera.position)
+      } else {
+        // When not selected, face origin
+        meshRef.current.lookAt(0, 0, 0)
+      }
+      
+      // Hover and selection effects - smooth transitions
+      const targetScale = isSelected ? 1.75 : (hovered ? 1.3 : 1)
+      const currentScale = meshRef.current.scale.x
+      const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1)
+      meshRef.current.scale.set(newScale, newScale, newScale)
+      
+      // Opacity changes
+      if (time > fadeInStart + fadeInDuration) {
+        const targetOpacity = isSelected ? 1 : (hovered ? 1 : 0.7)
+        const currentOpacity = meshRef.current.material.opacity
+        meshRef.current.material.opacity = THREE.MathUtils.lerp(currentOpacity, targetOpacity, 0.1)
+      }
     }
   })
   
   return (
-    <mesh ref={meshRef} position={gridPosition}>
+    <mesh 
+      ref={meshRef} 
+      position={gridPosition}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect(isSelected ? null : index)
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation()
+        setHovered(true)
+        document.body.style.cursor = 'pointer'
+      }}
+      onPointerOut={() => {
+        setHovered(false)
+        document.body.style.cursor = 'auto'
+      }}
+    >
       <planeGeometry args={[width, height]} />
       <meshStandardMaterial 
         map={texture}
@@ -162,16 +222,30 @@ function getGridPositions(count) {
 // Generate final positions for photos in 3D space around the camera
 function getPhotoPositions(count) {
   const positions = []
-  const radius = 12
+  const radius = 15
+  
+  // Seeded random for consistent positions
+  const seededRandom = (seed) => {
+    const x = Math.sin(seed * 9999) * 10000
+    return x - Math.floor(x)
+  }
   
   for (let i = 0; i < count; i++) {
     // Distribute photos in a sphere around the camera
     const phi = Math.acos(-1 + (2 * i) / count)
     const theta = Math.sqrt(count * Math.PI) * phi
     
-    const x = radius * Math.cos(theta) * Math.sin(phi)
-    const y = radius * Math.sin(theta) * Math.sin(phi)
-    const z = radius * Math.cos(phi)
+    // Add random offset to prevent overlapping
+    const offsetAmount = 0.5
+    const radiusVariation = 3
+    
+    const offsetPhi = phi + (seededRandom(i * 2) - 0.5) * offsetAmount
+    const offsetTheta = theta + (seededRandom(i * 2 + 1) - 0.5) * offsetAmount
+    const offsetRadius = radius + (seededRandom(i * 3) - 0.5) * radiusVariation
+    
+    const x = offsetRadius * Math.cos(offsetTheta) * Math.sin(offsetPhi)
+    const y = offsetRadius * Math.sin(offsetTheta) * Math.sin(offsetPhi)
+    const z = offsetRadius * Math.cos(offsetPhi)
     
     positions.push([x, y, z])
   }
@@ -184,6 +258,7 @@ function SceneContent({ imageUrls, cloudName }) {
   const photoPositions = getPhotoPositions(imageUrls.length)
   const gridPositions = getGridPositions(imageUrls.length)
   const [hasAnimated, setHasAnimated] = useState(false)
+  const [selectedIndex, setSelectedIndex] = useState(null)
   
   const introImageUrl = `https://res.cloudinary.com/${cloudName}/image/upload/w_800,q_auto,f_auto/Screenshot_2025-11-29_162404_bbba8k.png`
   
@@ -221,6 +296,8 @@ function SceneContent({ imageUrls, cloudName }) {
             index={index}
             totalImages={imageUrls.length}
             hasAnimated={hasAnimated}
+            selectedIndex={selectedIndex}
+            onSelect={setSelectedIndex}
           />
         </Suspense>
       ))}
@@ -286,7 +363,9 @@ function QuestionsForGod() {
         camera={{ 
           position: [0, 0, 0], 
           fov: 75,
-          rotation: [0, 0, 0]
+          rotation: [0, 0, 0],
+          near: 0.1,
+          far: 100
         }}
         dpr={Math.min(window.devicePixelRatio, 2)}
         gl={{ 
