@@ -15,18 +15,20 @@ function IntroPlane({ imageUrl }) {
   })
   
   const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
-  const height = 6
+  const height = 10 // Increased from 6 to 10 for bigger size
   const width = height * aspect
   
   useFrame((state) => {
     if (meshRef.current) {
       const time = state.clock.elapsedTime
-      const fadeOutStart = 2
-      const fadeOutDuration = 1
+      const fadeOutStart = 3.5 // Increased from 2 to 3.5 seconds
+      const fadeOutDuration = 1.5 // Increased from 1 to 1.5 for smoother fade
       
       if (time > fadeOutStart) {
         const fadeProgress = Math.min((time - fadeOutStart) / fadeOutDuration, 1)
-        meshRef.current.material.opacity = 1 - fadeProgress
+        // Smooth ease-out fade
+        const easedFade = 1 - Math.pow(1 - fadeProgress, 3)
+        meshRef.current.material.opacity = 1 - easedFade
       }
     }
   })
@@ -69,14 +71,14 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
     if (meshRef.current) {
       const time = state.clock.elapsedTime
       
-      // Phase 1: Hidden (0-2s)
-      // Phase 2: Fade in at grid position (2-3s)
-      // Phase 3: Hold at grid (3-5s)
-      // Phase 4: Fly to final position (5-8s)
+      // Phase 1: Hidden (0-3.5s)
+      // Phase 2: Fade in at grid position (3.5-4.5s)
+      // Phase 3: Hold at grid (4.5-6s)
+      // Phase 4: Fly to final position (6-9s)
       
-      const fadeInStart = 2
+      const fadeInStart = 3.5 // Delayed to match intro image fade out
       const fadeInDuration = 1
-      const gridHoldEnd = 5
+      const gridHoldEnd = 6
       const flyDuration = 3
       const flyStart = gridHoldEnd + (index * 0.1)
       
@@ -257,28 +259,58 @@ function getPhotoPositions(count) {
   return positions
 }
 
-// Bloom controller for submit animation
-function BloomController({ isSubmitting }) {
+// Bloom controller for submit animation and entry animation
+function BloomController({ isSubmitting, isEntering }) {
   const bloomRef = useRef()
-  const startTime = useRef(null)
+  const submitStartTime = useRef(null)
+  const entryStartTime = useRef(null)
+  const hasEntered = useRef(false)
   
   useFrame((state) => {
     if (!bloomRef.current) return
     
+    // Smooth easing function (ease-out cubic)
+    const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+    
     if (isSubmitting) {
-      if (!startTime.current) {
-        startTime.current = state.clock.elapsedTime
+      // Submit animation - bloom increases
+      if (!submitStartTime.current) {
+        submitStartTime.current = state.clock.elapsedTime
       }
       
-      const elapsed = state.clock.elapsedTime - startTime.current
+      const elapsed = state.clock.elapsedTime - submitStartTime.current
       const duration = 3 // 3 seconds to full bloom
       const progress = Math.min(elapsed / duration, 1)
       
-      // Exponential increase in bloom intensity
-      const intensity = 0.3 + (Math.pow(progress, 2) * 15)
+      // Smooth exponential increase in bloom intensity
+      const easedProgress = easeOutCubic(progress)
+      const intensity = 0.3 + (easedProgress * easedProgress * 15)
       bloomRef.current.intensity = intensity
+    } else if (isEntering && !hasEntered.current) {
+      // Entry animation - start high and decrease
+      if (!entryStartTime.current) {
+        entryStartTime.current = state.clock.elapsedTime
+      }
+      
+      const elapsed = state.clock.elapsedTime - entryStartTime.current
+      const duration = 3.0 // 3 seconds to normalize (extended for smoothness)
+      const progress = Math.min(elapsed / duration, 1)
+      
+      // Smooth ease-out curve
+      const easedProgress = easeOutCubic(progress)
+      
+      // Start at high bloom (8) and decrease to normal (0.3)
+      const startBloom = 8
+      const endBloom = 0.3
+      const intensity = startBloom - (startBloom - endBloom) * easedProgress
+      bloomRef.current.intensity = intensity
+      
+      // Mark as complete
+      if (progress >= 1) {
+        hasEntered.current = true
+      }
     } else {
-      startTime.current = null
+      submitStartTime.current = null
       bloomRef.current.intensity = 0.3
     }
   })
@@ -295,7 +327,7 @@ function BloomController({ isSubmitting }) {
 }
 
 // Scene content with HDRI environment and photos positioned around camera
-function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting }) {
+function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting, isEntering }) {
   const photoPositions = getPhotoPositions(imageUrls.length)
   const gridPositions = getGridPositions(imageUrls.length)
   const [hasAnimated, setHasAnimated] = useState(false)
@@ -304,8 +336,8 @@ function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting
   const introImageUrl = `https://res.cloudinary.com/${cloudName}/image/upload/w_800,q_auto,f_auto/Screenshot_2025-11-29_162404_bbba8k.png`
   
   useEffect(() => {
-    // Trigger animation after a short delay
-    const timer = setTimeout(() => setHasAnimated(true), 500)
+    // Trigger animation after intro image is well displayed
+    const timer = setTimeout(() => setHasAnimated(true), 1000)
     return () => clearTimeout(timer)
   }, [])
   
@@ -357,7 +389,7 @@ function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting
       
       {/* Post-processing effects - Lo-fi aesthetic */}
       <EffectComposer>
-        <BloomController isSubmitting={isSubmitting} />
+        <BloomController isSubmitting={isSubmitting} isEntering={isEntering} />
         <Noise opacity={0.08} />
         <Vignette eskil={false} offset={0.15} darkness={1.2} />
         <ChromaticAberration offset={[0.0005, 0.0005]} />
@@ -398,6 +430,36 @@ function QuestionsForGod() {
   const [questionText, setQuestionText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [fadeOverlay, setFadeOverlay] = useState(0)
+  const [isEntering, setIsEntering] = useState(true)
+  const [entryFadeIn, setEntryFadeIn] = useState(1) // Start at full black
+  
+  // Entry fade-in animation - smooth and gentle
+  useEffect(() => {
+    let progress = 0
+    const duration = 2000 // 2 seconds
+    const startTime = Date.now()
+    
+    const fadeInterval = setInterval(() => {
+      const elapsed = Date.now() - startTime
+      progress = Math.min(elapsed / duration, 1)
+      
+      // Smooth ease-out cubic
+      const eased = 1 - Math.pow(1 - progress, 3)
+      setEntryFadeIn(1 - eased)
+      
+      if (progress >= 1) {
+        clearInterval(fadeInterval)
+      }
+    }, 16) // ~60fps
+    
+    return () => clearInterval(fadeInterval)
+  }, [])
+  
+  // Disable entry bloom animation after initial load
+  useEffect(() => {
+    const timer = setTimeout(() => setIsEntering(false), 3500) // Extended to 3.5s for smoother finish
+    return () => clearTimeout(timer)
+  }, [])
   
   // Handle submit animation
   const handleSubmit = () => {
@@ -458,6 +520,7 @@ function QuestionsForGod() {
             cloudName={cloudName}
             onQuestionInputClick={() => setShowQuestionInput(true)}
             isSubmitting={isSubmitting}
+            isEntering={isEntering}
           />
         </Suspense>
       </Canvas>
@@ -548,7 +611,21 @@ function QuestionsForGod() {
         </div>
       )}
 
-      {/* Fade to black overlay */}
+      {/* Entry fade-in overlay - starts black and fades out */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'black',
+        opacity: entryFadeIn,
+        pointerEvents: 'none',
+        zIndex: 50,
+        transition: 'opacity 0.1s linear'
+      }} />
+
+      {/* Fade to black overlay for submit */}
       <div style={{
         position: 'fixed',
         top: 0,
@@ -558,7 +635,7 @@ function QuestionsForGod() {
         backgroundColor: 'black',
         opacity: fadeOverlay,
         pointerEvents: 'none',
-        zIndex: 50,
+        zIndex: 51,
         transition: 'opacity 0.1s linear'
       }} />
 

@@ -8,9 +8,11 @@ function ParticleAura({
   size = 0.03,
   spread = 15,        // How far particles spread
   height = 12,        // Vertical spread
-  driftSpeed = 0.3    // How fast particles drift
+  driftSpeed = 0.3,   // How fast particles drift
+  isTransitioning = false  // Transition animation
 }) {
   const points = useRef()
+  const transitionStartTime = useRef(null)
   
   // Create particles with flowing spiral energy patterns
   const { positions, colors, particleData } = useMemo(() => {
@@ -76,7 +78,11 @@ function ParticleAura({
         orbitSpeed,
         streamIndex,
         randomOffset,
-        heightBase: heightPos
+        heightBase: heightPos,
+        // Transition velocities - radial outward dispersal
+        transitionVelX: x / streamRadius + (Math.random() - 0.5) * 0.5,
+        transitionVelY: (Math.random() - 0.3) * 2,
+        transitionVelZ: z / (streamRadius * 0.4) + (Math.random() - 0.5) * 0.5
       })
       
       positions[i * 3] = x
@@ -95,35 +101,74 @@ function ParticleAura({
     return geo
   }, [positions, colors])
   
-  // Animate particles with energetic flowing motion
+  // Animate particles with energetic flowing motion or transition dispersal
   useFrame((state) => {
     if (!points.current) return
     
     const posArray = points.current.geometry.attributes.position.array
     const time = state.clock.elapsedTime * driftSpeed * 2
     
+    // Initialize transition timing
+    if (isTransitioning && transitionStartTime.current === null) {
+      transitionStartTime.current = state.clock.elapsedTime;
+    }
+    
     for (let i = 0; i < count; i++) {
       const p = particleData[i]
       
-      // Flowing spiral motion with energy
-      const flowTime = time * p.flowSpeed + p.flowPhase
-      const orbitAngle = time * p.orbitSpeed + (p.streamIndex * Math.PI / 4)
-      
-      // Spiral flow with dynamic radius pulsing
-      const radiusPulse = 1 + Math.sin(flowTime * 0.5) * 0.2
-      const currentRadius = p.orbitRadius * radiusPulse
-      
-      // Orbiting motion
-      const x = currentRadius * Math.cos(orbitAngle) + Math.sin(flowTime * 1.5) * p.randomOffset
-      const z = currentRadius * Math.sin(orbitAngle) * 0.4 + Math.cos(flowTime * 1.2) * p.randomOffset * 0.3
-      
-      // Vertical flow with wave motion
-      const verticalFlow = Math.sin(flowTime + p.streamIndex) * 2
-      const y = p.heightBase + verticalFlow + Math.cos(flowTime * 0.8) * 1.5
-      
-      posArray[i * 3] = x
-      posArray[i * 3 + 1] = y
-      posArray[i * 3 + 2] = z
+      if (isTransitioning) {
+        // TRANSITION MODE - disperse outward like a cloud
+        const transitionTime = state.clock.elapsedTime - transitionStartTime.current;
+        
+        // Smooth easing function (ease-in-out cubic)
+        const easeInOutCubic = (t) => {
+          return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+        };
+        
+        // Gentle acceleration curve
+        const normalizedTime = Math.min(transitionTime / 2.5, 1); // 2.5 second dispersal
+        const easedProgress = easeInOutCubic(normalizedTime);
+        const dispersionSpeed = easedProgress * 12; // Max distance multiplier
+        
+        // Smooth swirling turbulence with lower frequency
+        const turbulence = Math.sin(state.clock.elapsedTime * 1.2 + i * 0.3) * 0.3 * easedProgress;
+        
+        const x = p.baseX + p.transitionVelX * dispersionSpeed + turbulence;
+        const y = p.baseY + p.transitionVelY * dispersionSpeed;
+        const z = p.baseZ + p.transitionVelZ * dispersionSpeed + turbulence * 0.3;
+        
+        posArray[i * 3] = x;
+        posArray[i * 3 + 1] = y;
+        posArray[i * 3 + 2] = z;
+        
+        // Smooth fade out with delay
+        if (points.current.material) {
+          const fadeStart = 0.3; // Start fading after 30% of animation
+          const fadeProgress = Math.max(0, (normalizedTime - fadeStart) / (1 - fadeStart));
+          const easedFade = easeInOutCubic(fadeProgress);
+          points.current.material.opacity = 0.6 * (1 - easedFade);
+        }
+      } else {
+        // Normal flowing spiral motion with energy
+        const flowTime = time * p.flowSpeed + p.flowPhase
+        const orbitAngle = time * p.orbitSpeed + (p.streamIndex * Math.PI / 4)
+        
+        // Spiral flow with dynamic radius pulsing
+        const radiusPulse = 1 + Math.sin(flowTime * 0.5) * 0.2
+        const currentRadius = p.orbitRadius * radiusPulse
+        
+        // Orbiting motion
+        const x = currentRadius * Math.cos(orbitAngle) + Math.sin(flowTime * 1.5) * p.randomOffset
+        const z = currentRadius * Math.sin(orbitAngle) * 0.4 + Math.cos(flowTime * 1.2) * p.randomOffset * 0.3
+        
+        // Vertical flow with wave motion
+        const verticalFlow = Math.sin(flowTime + p.streamIndex) * 2
+        const y = p.heightBase + verticalFlow + Math.cos(flowTime * 0.8) * 1.5
+        
+        posArray[i * 3] = x
+        posArray[i * 3 + 1] = y
+        posArray[i * 3 + 2] = z
+      }
     }
     
     points.current.geometry.attributes.position.needsUpdate = true

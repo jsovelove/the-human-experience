@@ -12,6 +12,7 @@ function ModelParticles({
   noiseStrength = 0.05,
   noiseSpeed = 0.8,
   violent = false,  // New prop for buzzing violent mode
+  isTransitioning = false,  // New prop for transition animation
   ...props 
 }) {
   const points = useRef();
@@ -19,6 +20,8 @@ function ModelParticles({
   
   // Store random offsets for each particle for chaotic motion
   const randomOffsets = useRef(null);
+  const transitionStartTime = useRef(null);
+  const transitionVelocities = useRef(null);
   
   // Extract vertices from the model to create particles
   const { particles, originalPositions } = useMemo(() => {
@@ -64,6 +67,13 @@ function ModelParticles({
       amp: 0.5 + Math.random() * 1.5
     }));
     
+    // Generate random velocities for transition dispersal
+    transitionVelocities.current = origPositions.map(() => ({
+      x: (Math.random() - 0.5) * 2,
+      y: 1 + Math.random() * 2, // Mostly upward
+      z: (Math.random() - 0.5) * 2
+    }));
+    
     console.log(`Created ${vertices.length} particles from model`);
     
     const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
@@ -71,15 +81,20 @@ function ModelParticles({
     return { particles: geometry, originalPositions: origPositions };
   }, [gltf, density]);
   
-  // Animation - buzzing violent motion
+  // Animation - buzzing violent motion or transition dispersal
   useFrame((state, delta) => {
     if (points.current) {
-      if (autoRotate) {
+      if (autoRotate && !isTransitioning) {
         points.current.rotation.y += delta * 0.1;
       }
       
       const positions = points.current.geometry.getAttribute('position');
       const time = state.clock.elapsedTime;
+      
+      // Initialize transition timing
+      if (isTransitioning && transitionStartTime.current === null) {
+        transitionStartTime.current = time;
+      }
       
       for (let i = 0; i < positions.count; i++) {
         const origPos = originalPositions[i];
@@ -87,7 +102,36 @@ function ModelParticles({
         
         let nx, ny, nz;
         
-        if (violent) {
+        if (isTransitioning) {
+          // TRANSITION MODE - particles float away like a cloud
+          const transitionTime = time - transitionStartTime.current;
+          const velocity = transitionVelocities.current[i];
+          
+          // Smooth easing function (ease-in-out cubic)
+          const easeInOutCubic = (t) => {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          };
+          
+          // Gentle acceleration curve
+          const normalizedTime = Math.min(transitionTime / 2.5, 1); // 2.5 second dispersal
+          const easedProgress = easeInOutCubic(normalizedTime);
+          const dispersionSpeed = easedProgress * 8; // Max distance multiplier
+          
+          // Smooth turbulence with lower frequency
+          const turbulence = Math.sin(time * 1.5 + i * 0.5) * 0.2 * easedProgress;
+          
+          nx = velocity.x * dispersionSpeed + turbulence;
+          ny = velocity.y * dispersionSpeed;
+          nz = velocity.z * dispersionSpeed + turbulence * 0.5;
+          
+          // Smooth fade opacity with delay
+          if (points.current.material) {
+            const fadeStart = 0.3; // Start fading after 30% of animation
+            const fadeProgress = Math.max(0, (normalizedTime - fadeStart) / (1 - fadeStart));
+            const easedFade = easeInOutCubic(fadeProgress);
+            points.current.material.opacity = 1 - easedFade;
+          }
+        } else if (violent) {
           // VIOLENT BUZZING MODE
           const speed = noiseSpeed * 8; // Much faster
           const strength = noiseStrength * 3; // Stronger displacement

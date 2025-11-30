@@ -1,5 +1,5 @@
 import './App.css'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, Suspense, useMemo, useRef } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
@@ -98,7 +98,7 @@ function getImagePositions(count) {
 }
 
 // Scene content with tiny photo particles floating in the aura
-function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imagePositions, showIntro, onIntroComplete, cloudName }) {
+function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imagePositions, showIntro, onIntroComplete, cloudName, isTransitioning }) {
   const imageData = useMemo(() => {
     return imageUrls.map((url, i) => ({
       url,
@@ -138,6 +138,7 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
           position={[-8, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
+          isTransitioning={isTransitioning}
         />
         
         {/* Center model */}
@@ -153,6 +154,7 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
           position={[0, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
+          isTransitioning={isTransitioning}
         />
         
         {/* Right model */}
@@ -168,6 +170,7 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
           position={[8, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
+          isTransitioning={isTransitioning}
         />
       </group>
       
@@ -179,6 +182,7 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
         spread={24}
         height={16}
         driftSpeed={0.8}
+        isTransitioning={isTransitioning}
       />
       
       {/* Tiny photo particles floating in the aura */}
@@ -213,6 +217,8 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
 }
 
 function God() {
+  const navigate = useNavigate()
+  
   // Cloudinary configuration
   const cloudName = 'dgbrj4suu'
   
@@ -248,6 +254,8 @@ function God() {
   const [showData, setShowData] = useState(false)
   const [showIntro, setShowIntro] = useState(true)
   const [likertData, setLikertData] = useState([])
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [fadeOverlay, setFadeOverlay] = useState(0)
   const controlsRef = useRef(null)
   
   // Pre-calculate image positions
@@ -269,6 +277,32 @@ function God() {
   
   const zoomOut = () => {
     setIsZoomedIn(false)
+  }
+  
+  // Handle transition to Questions for God page
+  const handleTransitionToQuestions = (e) => {
+    e.preventDefault()
+    setIsTransitioning(true)
+    
+    // Start particle dispersion and fade overlay after particles have dispersed a bit
+    setTimeout(() => {
+      let fadeProgress = 0
+      const fadeInterval = setInterval(() => {
+        // Smooth ease-in fade
+        fadeProgress += 0.012 // Slightly slower fade
+        const easedFade = fadeProgress < 0.5 
+          ? 2 * fadeProgress * fadeProgress 
+          : 1 - Math.pow(-2 * fadeProgress + 2, 2) / 2
+        
+        setFadeOverlay(easedFade)
+        
+        if (fadeProgress >= 1) {
+          clearInterval(fadeInterval)
+          // Navigate to questions page
+          navigate('/questions-for-god')
+        }
+      }, 16) // ~60fps
+    }, 1800) // Wait for particles to disperse more
   }
 
   // Helper to parse CSV respecting quoted commas
@@ -377,6 +411,7 @@ function God() {
             showIntro={showIntro}
             onIntroComplete={() => setShowIntro(false)}
             cloudName={cloudName}
+            isTransitioning={isTransitioning}
             onImageClick={(index) => {
               setSelectedPhotoIndex(index)
               setIsZoomedIn(true)
@@ -491,8 +526,9 @@ function God() {
           PLEASE DRAW GOD
         </Link>
         
-        <Link 
-          to="/questions-for-god" 
+        <a 
+          href="/questions-for-god"
+          onClick={handleTransitionToQuestions}
           style={{ 
             color: 'white', 
             textDecoration: 'none', 
@@ -511,7 +547,7 @@ function God() {
           onMouseLeave={(e) => e.target.style.opacity = '0.5'}
         >
           QUESTIONS FOR GOD
-        </Link>
+        </a>
       </div>
 
       {/* Photo navigation arrows - only show when viewing images */}
@@ -681,6 +717,20 @@ function God() {
       >
         ← Back
       </Link>
+
+      {/* Fade to black overlay for transition */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'black',
+        opacity: fadeOverlay,
+        pointerEvents: 'none',
+        zIndex: 100,
+        transition: 'opacity 0.1s linear'
+      }} />
 
     </div>
   )
