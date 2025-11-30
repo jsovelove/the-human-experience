@@ -60,9 +60,9 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
   
   const isSelected = selectedIndex === index
   
-  // Calculate aspect ratio - smaller size
+  // Calculate aspect ratio - make question input image bigger
   const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
-  const height = 1.5
+  const height = isQuestionInput ? 2.5 : 1.5
   const width = height * aspect
   
   useFrame((state) => {
