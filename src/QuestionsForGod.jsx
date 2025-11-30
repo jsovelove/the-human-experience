@@ -47,7 +47,7 @@ function IntroPlane({ imageUrl }) {
 }
 
 // Photo plane component with intro animation and floating
-function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated, selectedIndex, onSelect }) {
+function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated, selectedIndex, onSelect, isQuestionInput, onQuestionInputClick }) {
   const meshRef = useRef()
   const { camera } = useThree()
   const [localAnimated, setLocalAnimated] = useState(false)
@@ -170,7 +170,11 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
       position={gridPosition}
       onClick={(e) => {
         e.stopPropagation()
-        onSelect(isSelected ? null : index)
+        if (isQuestionInput) {
+          onQuestionInputClick()
+        } else {
+          onSelect(isSelected ? null : index)
+        }
       }}
       onPointerOver={(e) => {
         e.stopPropagation()
@@ -253,8 +257,45 @@ function getPhotoPositions(count) {
   return positions
 }
 
+// Bloom controller for submit animation
+function BloomController({ isSubmitting }) {
+  const bloomRef = useRef()
+  const startTime = useRef(null)
+  
+  useFrame((state) => {
+    if (!bloomRef.current) return
+    
+    if (isSubmitting) {
+      if (!startTime.current) {
+        startTime.current = state.clock.elapsedTime
+      }
+      
+      const elapsed = state.clock.elapsedTime - startTime.current
+      const duration = 3 // 3 seconds to full bloom
+      const progress = Math.min(elapsed / duration, 1)
+      
+      // Exponential increase in bloom intensity
+      const intensity = 0.3 + (Math.pow(progress, 2) * 15)
+      bloomRef.current.intensity = intensity
+    } else {
+      startTime.current = null
+      bloomRef.current.intensity = 0.3
+    }
+  })
+  
+  return (
+    <Bloom 
+      ref={bloomRef}
+      intensity={0.3} 
+      luminanceThreshold={0.3} 
+      luminanceSmoothing={0.2} 
+      height={300} 
+    />
+  )
+}
+
 // Scene content with HDRI environment and photos positioned around camera
-function SceneContent({ imageUrls, cloudName }) {
+function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting }) {
   const photoPositions = getPhotoPositions(imageUrls.length)
   const gridPositions = getGridPositions(imageUrls.length)
   const [hasAnimated, setHasAnimated] = useState(false)
@@ -298,6 +339,8 @@ function SceneContent({ imageUrls, cloudName }) {
             hasAnimated={hasAnimated}
             selectedIndex={selectedIndex}
             onSelect={setSelectedIndex}
+            isQuestionInput={index === 0}
+            onQuestionInputClick={onQuestionInputClick}
           />
         </Suspense>
       ))}
@@ -314,12 +357,7 @@ function SceneContent({ imageUrls, cloudName }) {
       
       {/* Post-processing effects - Lo-fi aesthetic */}
       <EffectComposer>
-        <Bloom 
-          intensity={0.3} 
-          luminanceThreshold={0.3} 
-          luminanceSmoothing={0.2} 
-          height={300} 
-        />
+        <BloomController isSubmitting={isSubmitting} />
         <Noise opacity={0.08} />
         <Vignette eskil={false} offset={0.15} darkness={1.2} />
         <ChromaticAberration offset={[0.0005, 0.0005]} />
@@ -332,6 +370,7 @@ function QuestionsForGod() {
   const cloudName = 'dgbrj4suu'
   
   const imageIds = [
+    'Screenshot_2025-11-29_162404_bbba8k', // Special question input image
     'Screenshot_2025-11-29_164232_uaio5h',
     'Screenshot_2025-11-29_164446_ljurzj',
     'Screenshot_2025-11-29_164502_kz9bd5',
@@ -354,6 +393,37 @@ function QuestionsForGod() {
   const imageUrls = imageIds.map(id => 
     `https://res.cloudinary.com/${cloudName}/image/upload/w_800,q_auto,f_auto/${id}.png`
   )
+  
+  const [showQuestionInput, setShowQuestionInput] = useState(false)
+  const [questionText, setQuestionText] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [fadeOverlay, setFadeOverlay] = useState(0)
+  
+  // Handle submit animation
+  const handleSubmit = () => {
+    console.log('Question submitted:', questionText)
+    setIsSubmitting(true)
+    setShowQuestionInput(false)
+    
+    // Start fade to black after bloom peaks
+    setTimeout(() => {
+      const fadeInterval = setInterval(() => {
+        setFadeOverlay(prev => {
+          const next = prev + 0.01
+          if (next >= 1) {
+            clearInterval(fadeInterval)
+            // Reset after fade completes
+            setTimeout(() => {
+              setIsSubmitting(false)
+              setFadeOverlay(0)
+              setQuestionText('')
+            }, 500)
+          }
+          return next
+        })
+      }, 16) // ~60fps
+    }, 2500) // Start fade after 2.5s of bloom
+  }
   
   return (
     <div className="app" style={{ backgroundColor: 'black', width: '100%', height: '100vh', overflow: 'hidden' }}>
@@ -383,10 +453,115 @@ function QuestionsForGod() {
         }}
       >
         <Suspense fallback={null}>
-          <SceneContent imageUrls={imageUrls} cloudName={cloudName} />
+          <SceneContent 
+            imageUrls={imageUrls} 
+            cloudName={cloudName}
+            onQuestionInputClick={() => setShowQuestionInput(true)}
+            isSubmitting={isSubmitting}
+          />
         </Suspense>
       </Canvas>
       
+      {/* Question input modal - minimal and elegant */}
+      {showQuestionInput && (
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            zIndex: 100,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            pointerEvents: 'none'
+          }}
+        >
+          <div 
+            style={{
+              textAlign: 'center',
+              maxWidth: '800px',
+              padding: '4rem',
+              borderRadius: '50%',
+              background: 'radial-gradient(circle, rgba(0,0,0,0.6) 0%, rgba(0,0,0,0.45) 20%, rgba(0,0,0,0.3) 35%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.1) 65%, rgba(0,0,0,0.05) 80%, transparent 100%)',
+              pointerEvents: 'auto'
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              color: 'rgba(255, 255, 255, 0.7)',
+              fontSize: '1.2rem',
+              fontWeight: '200',
+              letterSpacing: '0.1em',
+              marginBottom: '2rem',
+              textShadow: '0 2px 10px rgba(0,0,0,0.5)'
+            }}>
+              what will you ask god?
+            </div>
+            
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }}>
+              <input
+                type="text"
+                value={questionText}
+                onChange={(e) => setQuestionText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && questionText.trim()) {
+                    handleSubmit()
+                  } else if (e.key === 'Escape') {
+                    setQuestionText('')
+                    setShowQuestionInput(false)
+                  }
+                }}
+                autoFocus
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: 'white',
+                  fontSize: '2rem',
+                  fontWeight: '200',
+                  letterSpacing: '0.05em',
+                  outline: 'none',
+                  textAlign: 'center',
+                  width: '100%',
+                  caretColor: 'white',
+                  textShadow: '0 2px 10px rgba(0,0,0,0.8)'
+                }}
+              />
+            </div>
+            
+            <div style={{
+              color: 'rgba(255, 255, 255, 0.3)',
+              fontSize: '0.8rem',
+              marginTop: '3rem',
+              letterSpacing: '0.1em',
+              textShadow: '0 2px 10px rgba(0,0,0,0.8)'
+            }}>
+              press enter to submit • esc to close
+            </div>
+          </div>
+          
+        </div>
+      )}
+
+      {/* Fade to black overlay */}
+      <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100%',
+        height: '100%',
+        backgroundColor: 'black',
+        opacity: fadeOverlay,
+        pointerEvents: 'none',
+        zIndex: 50,
+        transition: 'opacity 0.1s linear'
+      }} />
+
       {/* Back button */}
       <Link 
         to="/god" 
