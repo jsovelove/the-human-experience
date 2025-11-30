@@ -13,7 +13,7 @@ const videoSrc = `https://res.cloudinary.com/${cloudName}/video/upload/${videoId
 
 // TV Model component with video screen
 function OldTV({ position = [0, 0, 0], scale = 1, videoSrc = null, groupRef }) {
-  const { scene } = useGLTF('/src/assets/models/old_tv.glb')
+  const { scene } = useGLTF('/assets/models/old_tv.glb')
   const screenMeshRef = useRef()
   const [clonedScene, setClonedScene] = useState(null)
   const [videoTexture, setVideoTexture] = useState(null)
@@ -477,7 +477,7 @@ function TVScene() {
 }
 
 // Preload the model
-useGLTF.preload('/src/assets/models/old_tv.glb')
+useGLTF.preload('/assets/models/old_tv.glb')
 
 export default TVScene
 
