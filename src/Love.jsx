@@ -531,29 +531,6 @@ function Love() {
         </Suspense>
       </Canvas>
       
-      {!sceneReady && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'white',
-            background: 'rgba(0, 0, 0, 0.6)',
-            zIndex: 9,
-            letterSpacing: '0.1em',
-            fontSize: '0.9rem',
-            pointerEvents: 'none'
-          }}
-        >
-          Preparing experience...
-        </div>
-      )}
-      
       {/* Development button to skip to voicemail stars */}
       {animationPhase !== 'interactive' && (
         <button
