@@ -13,6 +13,17 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
   const spinStartTime = useRef(null)
   
   useFrame((state) => {
+    // During intro, camera stays in starting position
+    if (animationPhase === 'intro') {
+      camera.position.set(0, 0, -5)
+      camera.lookAt(0, 0, 0)
+      if (controlsRef.current) {
+        controlsRef.current.target.set(0, 0, 0)
+        controlsRef.current.update()
+      }
+      return
+    }
+    
     if (animationPhase === 'spinning' || animationPhase === 'scattered') {
       if (spinStartTime.current === null) {
         spinStartTime.current = state.clock.elapsedTime
@@ -57,7 +68,7 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
 }
 
 // Voicemail particle component - simple square with audio reactivity and fade in
-function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onClick, audioAnalyser }) {
+function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onClick, audioAnalyser, isCenter = false }) {
   const spriteRef = useRef()
   const audioData = useRef(0)
   const fadeStartTime = useRef(null)
@@ -77,7 +88,7 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
     const easeInCubic = (t) => t * t * t
     fadeOpacity.current = easeInCubic(fadeProgress)
     
-    // Get audio reactivity data
+    // Get audio reactivity data - only for the playing voicemail
     let audioLevel = 0
     if (isPlaying && audioAnalyser) {
       const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount)
@@ -95,15 +106,15 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
     }
     
     if (spriteRef.current) {
-      // Audio-reactive scale
-      const baseScale = 0.4
+      // Audio-reactive scale - center star is bigger
+      const baseScale = isCenter ? 0.5 : 0.35
       const audioScale = isPlaying ? (1 + audioData.current * 2.5) : 1
       const finalScale = baseScale * audioScale
       spriteRef.current.scale.set(finalScale, finalScale, finalScale)
       
       // Audio-reactive brightness through opacity - pulses dramatically, multiplied by fade
       if (spriteRef.current.material) {
-        const baseOpacity = 0.6
+        const baseOpacity = isCenter ? 0.7 : 0.5 // Center star is brighter
         const audioBrightness = isPlaying ? audioData.current * 1.0 : 0
         const targetOpacity = Math.min(baseOpacity + audioBrightness, 1)
         spriteRef.current.material.opacity = targetOpacity * fadeOpacity.current
@@ -125,7 +136,7 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
       
       {/* Click detection sphere (invisible) */}
       <mesh>
-        <sphereGeometry args={[0.5, 16, 16]} />
+        <sphereGeometry args={[0.6, 16, 16]} />
         <meshBasicMaterial transparent opacity={0} />
       </mesh>
     </group>
@@ -134,12 +145,22 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
 
 // Scene content with animated particles and voicemails
 function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser }) {
-  // Voicemail data - centered position
+  // Voicemail data - galaxy of voicemails scattered around
   const voicemails = [
     {
       id: 0,
       url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45624325184_z9xtzz.mp3',
-      position: [0, 0, 0] // Centered
+      position: [0, 0, 0] // Center
+    },
+    {
+      id: 1,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45627313472_nyrbuj.mp3',
+      position: [-3, 1.5, -2] // Left-back
+    },
+    {
+      id: 2,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-50393231296_rs2qo2.mp3',
+      position: [3.5, -1, 1.5] // Right-front
     }
   ]
   
@@ -161,7 +182,7 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
       <pointLight position={[0, 15, 0]} color="#ffffff" intensity={1} />
       <pointLight position={[0, -10, 5]} color="#ffc0cb" intensity={0.5} />
       
-      {/* Model particles - will scatter after camera animation */}
+      {/* Model particles - gather together, then scatter after camera animation */}
       <ModelParticles 
         modelPath="/assets/models/12_1_2025.glb"
         color="#ffffff"
@@ -173,11 +194,13 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
         violent={false}
         position={[0, 0, 0]}
         scale={[2, 2, 2]}
+        isGathering={animationPhase === 'intro'}
+        gatheringDuration={6}
         isTransitioning={isScattered}
         transitionDuration={10}
       />
       
-      {/* Voicemail particles - only visible after scattering */}
+      {/* Voicemail particles - galaxy of voicemails, visible after scattering */}
       {animationPhase === 'interactive' && voicemails.map((voicemail) => (
         <VoicemailParticle
           key={voicemail.id}
@@ -187,6 +210,7 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
           isPlaying={playingVoicemail === voicemail.id}
           onClick={() => onVoicemailClick(voicemail)}
           audioAnalyser={audioAnalyser}
+          isCenter={voicemail.id === 0}
         />
       ))}
       
@@ -213,8 +237,8 @@ function Love() {
   const audioContextRef = useRef(null)
   const analyserRef = useRef(null)
   
-  // Animation phases: 'spinning' -> 'scattered' -> 'interactive'
-  const [animationPhase, setAnimationPhase] = useState('spinning')
+  // Animation phases: 'intro' -> 'spinning' -> 'scattered' -> 'interactive'
+  const [animationPhase, setAnimationPhase] = useState('intro')
   const [selectedVoicemail, setSelectedVoicemail] = useState(null)
   const [playingVoicemail, setPlayingVoicemail] = useState(null)
   
@@ -234,18 +258,24 @@ function Love() {
     
     playAudio()
     
-    // Start particle scatter at 15 seconds (last 10 seconds of spin for slower, smoother scatter)
+    // Intro gathering: 0-6 seconds
+    const spinTimer = setTimeout(() => {
+      setAnimationPhase('spinning')
+    }, 6000) // Start spinning after 6 second intro
+    
+    // Start particle scatter at 21 seconds (6s intro + 15s into spin)
     const scatterTimer = setTimeout(() => {
       setAnimationPhase('scattered')
-    }, 15000) // 15 seconds
+    }, 21000)
     
-    // Transition to interactive (show voicemail star) at 20 seconds
+    // Transition to interactive (show voicemail star) at 26 seconds
     const interactiveTimer = setTimeout(() => {
       setAnimationPhase('interactive')
-    }, 20000) // 20 seconds - 5 seconds after scatter starts
+    }, 26000)
     
     // Cleanup on unmount
     return () => {
+      clearTimeout(spinTimer)
       clearTimeout(scatterTimer)
       clearTimeout(interactiveTimer)
       if (audioRef.current) {
@@ -284,6 +314,14 @@ function Love() {
   
   // Handle voicemail click
   const handleVoicemailClick = (voicemail) => {
+    // If clicking the same voicemail that's playing, stop it
+    if (playingVoicemail === voicemail.id && voicemailAudioRef.current) {
+      voicemailAudioRef.current.pause()
+      setPlayingVoicemail(null)
+      setSelectedVoicemail(null)
+      return
+    }
+    
     setSelectedVoicemail(voicemail.id)
     setPlayingVoicemail(voicemail.id)
     
@@ -336,6 +374,7 @@ function Love() {
     // Update playing state when audio ends
     audio.onended = () => {
       setPlayingVoicemail(null)
+      setSelectedVoicemail(null)
     }
   }
   
@@ -357,7 +396,8 @@ function Love() {
           left: 0,
           width: '100%',
           height: '100%',
-          backgroundColor: '#0a0a0a'
+          backgroundColor: '#0a0a0a',
+          cursor: animationPhase === 'interactive' ? 'pointer' : 'default'
         }}
       >
         <Suspense fallback={null}>
@@ -371,7 +411,7 @@ function Love() {
             audioAnalyser={analyserRef.current}
           />
           
-          {/* Orbit controls - disabled during spinning and scattering animation */}
+          {/* Orbit controls - only enabled when interactive */}
           <OrbitControls 
             ref={controlsRef}
             enabled={animationPhase === 'interactive'}

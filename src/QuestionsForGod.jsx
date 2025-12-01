@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, useTexture } from '@react-three/drei'
-import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration, DotScreen, HueSaturation } from '@react-three/postprocessing'
 import * as THREE from 'three'
 
 // Initial single image plane that morphs into grid
@@ -49,7 +49,7 @@ function IntroPlane({ imageUrl }) {
 }
 
 // Photo plane component with intro animation and floating
-function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated, selectedIndex, onSelect, isQuestionInput, onQuestionInputClick }) {
+function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasAnimated, selectedIndex, onSelect, isQuestionInput, onQuestionInputClick, isIdol, idolSelected, onIdolSelect }) {
   const meshRef = useRef()
   const { camera } = useThree()
   const [localAnimated, setLocalAnimated] = useState(false)
@@ -62,9 +62,9 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
   
   const isSelected = selectedIndex === index
   
-  // Calculate aspect ratio - make question input image bigger
+  // Calculate aspect ratio - make question input and idol images bigger
   const aspect = texture.image ? texture.image.width / texture.image.height : 16/9
-  const height = isQuestionInput ? 2.5 : 1.5
+  const height = isQuestionInput ? 2.5 : (isIdol ? 4.0 : 1.5)
   const width = height * aspect
   
   useFrame((state) => {
@@ -82,14 +82,14 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
       const flyDuration = 3
       const flyStart = gridHoldEnd + (index * 0.1)
       
-      // Opacity control
+      // Opacity control - initial fade in
       if (time < fadeInStart) {
         meshRef.current.material.opacity = 0
       } else if (time < fadeInStart + fadeInDuration) {
         const fadeProgress = (time - fadeInStart) / fadeInDuration
-        meshRef.current.material.opacity = fadeProgress * 0.7
-      } else {
-        meshRef.current.material.opacity = 0.7
+        // If idol is selected and this isn't the idol, fade to 0 instead
+        const targetOpacity = (idolSelected && !isIdol) ? 0 : 0.7
+        meshRef.current.material.opacity = fadeProgress * targetOpacity
       }
       
       // Position control
@@ -157,11 +157,25 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
       const newScale = THREE.MathUtils.lerp(currentScale, targetScale, 0.1)
       meshRef.current.scale.set(newScale, newScale, newScale)
       
-      // Opacity changes
-      if (time > fadeInStart + fadeInDuration) {
-        const targetOpacity = isSelected ? 1 : (hovered ? 1 : 0.7)
+      // Opacity changes - handle all opacity after initial fade in
+      if (time >= fadeInStart + fadeInDuration) {
+        let targetOpacity
+        
+        // If idol is selected, fade out all other drawings completely
+        if (idolSelected && !isIdol) {
+          targetOpacity = 0
+        } else if (isIdol && idolSelected) {
+          // When idol is selected, make it fully opaque
+          targetOpacity = 1
+        } else {
+          // Normal behavior
+          targetOpacity = isSelected ? 1 : (hovered ? 1 : 0.7)
+        }
+        
         const currentOpacity = meshRef.current.material.opacity
-        meshRef.current.material.opacity = THREE.MathUtils.lerp(currentOpacity, targetOpacity, 0.1)
+        // Use faster lerp for fading out (0.15 instead of 0.1)
+        const lerpSpeed = (idolSelected && !isIdol) ? 0.15 : 0.1
+        meshRef.current.material.opacity = THREE.MathUtils.lerp(currentOpacity, targetOpacity, lerpSpeed)
       }
     }
   })
@@ -172,16 +186,28 @@ function PhotoPlane({ imageUrl, position, index, gridPosition, totalImages, hasA
       position={gridPosition}
       onClick={(e) => {
         e.stopPropagation()
+        // Don't allow clicking non-idol drawings when idol is selected
+        if (idolSelected && !isIdol) return
+        
         if (isQuestionInput) {
           onQuestionInputClick()
+        } else if (isIdol) {
+          // Toggle idol state
+          const newIdolState = !idolSelected
+          onIdolSelect(newIdolState)
+          // Also select/deselect the idol for centering and scaling
+          onSelect(newIdolState ? index : null)
         } else {
           onSelect(isSelected ? null : index)
         }
       }}
       onPointerOver={(e) => {
         e.stopPropagation()
-        setHovered(true)
-        document.body.style.cursor = 'pointer'
+        // Don't allow hover if idol is selected and this isn't the idol
+        if (!(idolSelected && !isIdol)) {
+          setHovered(true)
+          document.body.style.cursor = 'pointer'
+        }
       }}
       onPointerOut={() => {
         setHovered(false)
@@ -326,8 +352,48 @@ function BloomController({ isSubmitting, isEntering }) {
   )
 }
 
+// Controller for halftone and black/white effects when idol is selected
+function IdolEffectsController({ idolSelected }) {
+  const hueSaturationRef = useRef()
+  
+  useFrame(() => {
+    if (!hueSaturationRef.current) return
+    
+    // Smooth transition
+    const lerpSpeed = 0.1
+    
+    if (idolSelected) {
+      // Fade to black and white
+      const targetSaturation = -1 // -1 = full desaturation (black & white)
+      const currentSaturation = hueSaturationRef.current.saturation
+      hueSaturationRef.current.saturation = THREE.MathUtils.lerp(currentSaturation, targetSaturation, lerpSpeed)
+    } else {
+      // Fade back to color
+      const targetSaturation = 0 // 0 = normal color
+      const currentSaturation = hueSaturationRef.current.saturation
+      hueSaturationRef.current.saturation = THREE.MathUtils.lerp(currentSaturation, targetSaturation, lerpSpeed)
+    }
+  })
+  
+  return (
+    <>
+      {idolSelected && (
+        <DotScreen 
+          angle={Math.PI * 0.25} // 45 degree angle for classic halftone look
+          scale={3.5} // Halftone dot size
+        />
+      )}
+      <HueSaturation 
+        ref={hueSaturationRef}
+        saturation={0} // Start with normal color
+        hue={0}
+      />
+    </>
+  )
+}
+
 // Scene content with HDRI environment and photos positioned around camera
-function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting, isEntering }) {
+function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting, isEntering, idolSelected, setIdolSelected }) {
   const photoPositions = getPhotoPositions(imageUrls.length)
   const gridPositions = getGridPositions(imageUrls.length)
   const [hasAnimated, setHasAnimated] = useState(false)
@@ -373,6 +439,9 @@ function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting
             onSelect={setSelectedIndex}
             isQuestionInput={index === 0}
             onQuestionInputClick={onQuestionInputClick}
+            isIdol={index === 1}
+            idolSelected={idolSelected}
+            onIdolSelect={setIdolSelected}
           />
         </Suspense>
       ))}
@@ -390,6 +459,7 @@ function SceneContent({ imageUrls, cloudName, onQuestionInputClick, isSubmitting
       {/* Post-processing effects - Lo-fi aesthetic */}
       <EffectComposer>
         <BloomController isSubmitting={isSubmitting} isEntering={isEntering} />
+        <IdolEffectsController idolSelected={idolSelected} />
         <Noise opacity={0.08} />
         <Vignette eskil={false} offset={0.15} darkness={1.2} />
         <ChromaticAberration offset={[0.0005, 0.0005]} />
@@ -404,6 +474,7 @@ function QuestionsForGod() {
   
   const imageIds = [
     'Screenshot_2025-11-29_162404_bbba8k', // Special question input image
+    'idol_aarqfi', // Special idol drawing - fades others when clicked
     'Screenshot_2025-11-29_164232_uaio5h',
     'Screenshot_2025-11-29_164446_ljurzj',
     'Screenshot_2025-11-29_164502_kz9bd5',
@@ -433,6 +504,7 @@ function QuestionsForGod() {
   const [fadeOverlay, setFadeOverlay] = useState(0)
   const [isEntering, setIsEntering] = useState(true)
   const [entryFadeIn, setEntryFadeIn] = useState(1) // Start at full black
+  const [idolSelected, setIdolSelected] = useState(false)
   
   // Entry fade-in animation - smooth and gentle
   useEffect(() => {
@@ -520,6 +592,8 @@ function QuestionsForGod() {
             onQuestionInputClick={() => setShowQuestionInput(true)}
             isSubmitting={isSubmitting}
             isEntering={isEntering}
+            idolSelected={idolSelected}
+            setIdolSelected={setIdolSelected}
           />
         </Suspense>
       </Canvas>

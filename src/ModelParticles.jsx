@@ -14,6 +14,8 @@ function ModelParticles({
   violent = false,  // New prop for buzzing violent mode
   isTransitioning = false,  // New prop for transition animation
   transitionDuration = 2.5,  // Duration of scatter animation in seconds
+  isGathering = false,  // New prop for intro gathering animation
+  gatheringDuration = 6,  // Duration of gathering animation in seconds
   ...props 
 }) {
   const points = useRef();
@@ -24,6 +26,10 @@ function ModelParticles({
   const transitionStartTime = useRef(null);
   const transitionVelocities = useRef(null);
   const gentleModeOffsets = useRef(null); // Store gentle mode offsets at transition start
+  const gatheringStartTime = useRef(null);
+  const gatheringStartPositions = useRef(null); // Random starting positions for gathering
+  const gatheringCompleted = useRef(false);
+  const gentleModeStartTime = useRef(null); // Track when gentle mode starts after gathering
   
   // Extract vertices from the model to create particles
   const { particles, originalPositions } = useMemo(() => {
@@ -76,6 +82,13 @@ function ModelParticles({
       z: (Math.random() - 0.5) * 2
     }));
     
+    // Generate random starting positions for gathering animation (scattered widely)
+    gatheringStartPositions.current = origPositions.map(() => ({
+      x: (Math.random() - 0.5) * 20, // Scatter range -10 to +10
+      y: (Math.random() - 0.5) * 20,
+      z: (Math.random() - 0.5) * 20
+    }));
+    
     console.log(`Created ${vertices.length} particles from model`);
     
     const geometry = new THREE.BufferGeometry().setFromPoints(vertices);
@@ -83,15 +96,28 @@ function ModelParticles({
     return { particles: geometry, originalPositions: origPositions };
   }, [gltf, density]);
   
-  // Animation - buzzing violent motion or transition dispersal
+  // Animation - gathering, buzzing violent motion, or transition dispersal
   useFrame((state, delta) => {
     if (points.current) {
-      if (autoRotate && !isTransitioning) {
+      if (autoRotate && !isTransitioning && !isGathering) {
         points.current.rotation.y += delta * 0.1;
       }
       
       const positions = points.current.geometry.getAttribute('position');
       const time = state.clock.elapsedTime;
+      
+      // Initialize gathering timing
+      if (isGathering && gatheringStartTime.current === null) {
+        gatheringStartTime.current = time;
+        gatheringCompleted.current = false;
+        gentleModeStartTime.current = null; // Reset gentle mode timer
+      }
+      
+      // Track when gathering completes and gentle mode begins
+      if (!isGathering && !gatheringCompleted.current && gatheringStartTime.current !== null) {
+        gatheringCompleted.current = true;
+        gentleModeStartTime.current = time;
+      }
       
       // Initialize transition timing and capture gentle mode offsets
       if (isTransitioning && transitionStartTime.current === null) {
@@ -116,6 +142,41 @@ function ModelParticles({
         const offsets = randomOffsets.current[i];
         
         let nx, ny, nz;
+        
+        if (isGathering) {
+          // GATHERING MODE - particles come together from scattered positions
+          const gatheringTime = time - gatheringStartTime.current;
+          const normalizedTime = Math.min(gatheringTime / gatheringDuration, 1);
+          
+          // Smooth ease-in-out
+          const easeInOutCubic = (t) => {
+            return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+          };
+          
+          const easedProgress = easeInOutCubic(normalizedTime);
+          
+          // Get random starting position for this particle
+          const startPos = gatheringStartPositions.current[i];
+          
+          // Interpolate from random start position to model position
+          const currentX = startPos.x + (origPos.x - startPos.x) * easedProgress;
+          const currentY = startPos.y + (origPos.y - startPos.y) * easedProgress;
+          const currentZ = startPos.z + (origPos.z - startPos.z) * easedProgress;
+          
+          // Add slight turbulence during gathering
+          const turbulence = Math.sin(time * 2 + i * 0.3) * 0.05 * (1 - easedProgress);
+          
+          // Directly set position for gathering (skip normal offset logic)
+          positions.setXYZ(
+            i,
+            currentX + turbulence,
+            currentY + turbulence * 0.5,
+            currentZ + turbulence
+          );
+          
+          // Skip to next particle
+          continue;
+        }
         
         if (isTransitioning) {
           // TRANSITION MODE - particles float away like a cloud
@@ -179,6 +240,22 @@ function ModelParticles({
           nx = Math.sin(time * speed + i * 0.1) * noiseStrength;
           ny = Math.cos(time * speed * 0.7 + i * 0.2) * noiseStrength;
           nz = Math.sin(time * speed * 0.5 + i * 0.3) * noiseStrength;
+          
+          // Smooth blend into gentle mode after gathering completes (only if not transitioning)
+          if (gentleModeStartTime.current !== null && !isTransitioning) {
+            const blendTime = time - gentleModeStartTime.current;
+            const blendDuration = 1.5; // 1.5 seconds to blend into gentle mode
+            const blendProgress = Math.min(blendTime / blendDuration, 1);
+            
+            // Ease in the gentle mode with smooth cubic
+            const easeInCubic = (t) => t * t * t;
+            const easedBlend = easeInCubic(blendProgress);
+            
+            // Scale the noise by the blend factor (starts at 0, ends at 1)
+            nx *= easedBlend;
+            ny *= easedBlend;
+            nz *= easedBlend;
+          }
         }
         
         positions.setXYZ(
