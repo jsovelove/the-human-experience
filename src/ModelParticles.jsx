@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useEffect } from 'react';
 import { useLoader, useFrame } from '@react-three/fiber';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import * as THREE from 'three';
@@ -16,10 +16,21 @@ function ModelParticles({
   transitionDuration = 2.5,  // Duration of scatter animation in seconds
   isGathering = false,  // New prop for intro gathering animation
   gatheringDuration = 6,  // Duration of gathering animation in seconds
+  onReady,
   ...props 
 }) {
   const points = useRef();
   const gltf = useLoader(GLTFLoader, modelPath);
+  const hasNotifiedReady = useRef(false);
+  
+  useEffect(() => {
+    if (!hasNotifiedReady.current) {
+      hasNotifiedReady.current = true;
+      if (onReady) {
+        onReady();
+      }
+    }
+  }, [onReady, gltf]);
   
   // Store random offsets for each particle for chaotic motion
   const randomOffsets = useRef(null);

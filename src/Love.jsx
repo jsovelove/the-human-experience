@@ -1,6 +1,6 @@
 import './App.css'
 import { Link } from 'react-router-dom'
-import { Suspense, useEffect, useRef, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
@@ -236,7 +236,7 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
 }
 
 // Scene content with animated particles and voicemails
-function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser }) {
+function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser, onSceneReady }) {
   // Voicemail data - galaxy of voicemails scattered around
   const voicemails = [
     {
@@ -292,6 +292,7 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
         gatheringDuration={6}
         isTransitioning={isScattered}
         transitionDuration={10}
+        onReady={onSceneReady}
       />
       
       {/* Voicemail particles - galaxy of voicemails, visible after scattering */}
@@ -335,9 +336,16 @@ function Love() {
   const [animationPhase, setAnimationPhase] = useState('intro')
   const [selectedVoicemail, setSelectedVoicemail] = useState(null)
   const [playingVoicemail, setPlayingVoicemail] = useState(null)
+  const [sceneReady, setSceneReady] = useState(false)
+
+  const handleSceneReady = useCallback(() => {
+    setSceneReady(true)
+  }, [])
   
   // Play background audio when component mounts
   useEffect(() => {
+    if (!sceneReady) return
+    
     const audio = new Audio('https://res.cloudinary.com/dgbrj4suu/video/upload/RD_1_fpm4za.mp3')
     audio.loop = true
     audio.volume = 0.5
@@ -385,7 +393,7 @@ function Love() {
         audioContextRef.current = null
       }
     }
-  }, [])
+  }, [sceneReady])
   
   // Handle camera spin completion (at 25 seconds) - transition to interactive
   const handleSpinComplete = () => {
@@ -395,6 +403,7 @@ function Love() {
   
   // Auto-play voicemail when entering interactive phase
   useEffect(() => {
+    if (!sceneReady) return
     if (animationPhase === 'interactive') {
       // Auto-play the first voicemail
       const firstVoicemail = {
@@ -404,7 +413,7 @@ function Love() {
       handleVoicemailClick(firstVoicemail)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [animationPhase])
+  }, [animationPhase, sceneReady])
   
   // Handle voicemail click
   const handleVoicemailClick = (voicemail) => {
@@ -491,7 +500,7 @@ function Love() {
           width: '100%',
           height: '100%',
           backgroundColor: '#0a0a0a',
-          cursor: animationPhase === 'interactive' ? 'pointer' : 'default'
+          cursor: sceneReady && animationPhase === 'interactive' ? 'pointer' : 'default'
         }}
       >
         <Suspense fallback={null}>
@@ -503,6 +512,7 @@ function Love() {
             playingVoicemail={playingVoicemail}
             onVoicemailClick={handleVoicemailClick}
             audioAnalyser={analyserRef.current}
+            onSceneReady={handleSceneReady}
           />
           
           {/* Orbit controls - enabled during interactive, but temporarily disabled during transitions */}
@@ -521,10 +531,33 @@ function Love() {
         </Suspense>
       </Canvas>
       
+      {!sceneReady && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            background: 'rgba(0, 0, 0, 0.6)',
+            zIndex: 9,
+            letterSpacing: '0.1em',
+            fontSize: '0.9rem',
+            pointerEvents: 'none'
+          }}
+        >
+          Preparing experience...
+        </div>
+      )}
+      
       {/* Development button to skip to voicemail stars */}
       {animationPhase !== 'interactive' && (
         <button
-          onClick={() => setAnimationPhase('interactive')}
+          onClick={() => sceneReady && setAnimationPhase('interactive')}
           style={{
             position: 'fixed',
             top: '2rem',
@@ -535,16 +568,19 @@ function Love() {
             border: '1px solid rgba(255, 255, 255, 0.5)',
             padding: '0.5rem 1rem',
             borderRadius: '4px',
-            cursor: 'pointer',
+            cursor: sceneReady ? 'pointer' : 'not-allowed',
             fontSize: '0.8rem',
             fontWeight: '500',
             transition: 'all 0.3s ease',
-            pointerEvents: 'auto'
+            pointerEvents: sceneReady ? 'auto' : 'none',
+            opacity: sceneReady ? 1 : 0.4
           }}
           onMouseEnter={(e) => {
+            if (!sceneReady) return
             e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.6)'
           }}
           onMouseLeave={(e) => {
+            if (!sceneReady) return
             e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.3)'
           }}
         >
