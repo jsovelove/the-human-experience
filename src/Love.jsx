@@ -8,9 +8,12 @@ import ModelParticles from './ModelParticles'
 import * as THREE from 'three'
 
 // Camera animation controller
-function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef }) {
+function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef, playingVoicemail, voicemailPositions }) {
   const { camera } = useThree()
   const spinStartTime = useRef(null)
+  const transitionStartTime = useRef(null)
+  const previousTarget = useRef(new THREE.Vector3(0, 0, 0))
+  const currentTargetId = useRef(null)
   
   useFrame((state) => {
     // During intro, camera stays in starting position
@@ -60,6 +63,51 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
       // Complete animation
       if (progress >= 1 && onSpinComplete) {
         onSpinComplete()
+      }
+    }
+    
+    // Interactive phase - move camera to center on playing voicemail
+    if (animationPhase === 'interactive' && playingVoicemail !== null) {
+      const targetVoicemail = voicemailPositions.find(v => v.id === playingVoicemail)
+      if (!targetVoicemail) return
+      
+      // Start new transition if target changed
+      if (currentTargetId.current !== playingVoicemail) {
+        transitionStartTime.current = state.clock.elapsedTime
+        previousTarget.current.copy(controlsRef.current?.target || new THREE.Vector3(0, 0, 0))
+        currentTargetId.current = playingVoicemail
+      }
+      
+      // Smooth camera transition to voicemail position
+      const transitionDuration = 1.5 // 1.5 seconds
+      const elapsed = state.clock.elapsedTime - transitionStartTime.current
+      const progress = Math.min(elapsed / transitionDuration, 1)
+      
+      // Smooth easing
+      const easeInOutCubic = (t) => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      }
+      
+      const easedProgress = easeInOutCubic(progress)
+      
+      // Target position for controls (where to look at)
+      const targetPos = new THREE.Vector3(...targetVoicemail.position)
+      
+      // Interpolate controls target
+      const newTarget = new THREE.Vector3()
+      newTarget.lerpVectors(previousTarget.current, targetPos, easedProgress)
+      
+      // Calculate camera offset - position camera in front and slightly offset from target
+      const offset = new THREE.Vector3(0, 0.5, 4) // Offset: slightly above and in front
+      const cameraTargetPos = newTarget.clone().add(offset)
+      
+      // Smoothly move camera position
+      camera.position.lerp(cameraTargetPos, 0.1)
+      
+      // Update controls to look at voicemail
+      if (controlsRef.current) {
+        controlsRef.current.target.copy(newTarget)
+        controlsRef.current.update()
       }
     }
   })
@@ -173,6 +221,8 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
         animationPhase={animationPhase}
         onSpinComplete={onSpinComplete}
         controlsRef={controlsRef}
+        playingVoicemail={playingVoicemail}
+        voicemailPositions={voicemails}
       />
       
       {/* Scene lighting */}
@@ -244,7 +294,7 @@ function Love() {
   
   // Play background audio when component mounts
   useEffect(() => {
-    const audio = new Audio('https://res.cloudinary.com/dgbrj4suu/video/upload/glasscannons_nkbda6.mp3')
+    const audio = new Audio('https://res.cloudinary.com/dgbrj4suu/video/upload/RD_1_fpm4za.mp3')
     audio.loop = true
     audio.volume = 0.5
     audioRef.current = audio
