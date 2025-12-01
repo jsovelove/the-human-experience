@@ -1,32 +1,452 @@
 import './App.css'
 import { Link } from 'react-router-dom'
+import { Suspense, useEffect, useRef, useState } from 'react'
+import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
+import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import ModelParticles from './ModelParticles'
+import * as THREE from 'three'
+
+// Camera animation controller
+function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef }) {
+  const { camera } = useThree()
+  const spinStartTime = useRef(null)
+  
+  useFrame((state) => {
+    if (animationPhase === 'spinning' || animationPhase === 'scattered') {
+      if (spinStartTime.current === null) {
+        spinStartTime.current = state.clock.elapsedTime
+      }
+      
+      const elapsed = state.clock.elapsedTime - spinStartTime.current
+      const duration = 25 // 25 seconds total
+      const progress = Math.min(elapsed / duration, 1)
+      
+      // Smooth easing
+      const easeInOutCubic = (t) => {
+        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      }
+      
+      const easedProgress = easeInOutCubic(progress)
+      // Start at 180 degrees (Math.PI) and rotate 180 degrees more
+      const angle = Math.PI + (easedProgress * Math.PI) // 180 degree rotation
+      
+      // Keep constant radius - no zoom
+      const radius = 5
+      
+      // Circular camera path
+      camera.position.x = Math.sin(angle) * radius
+      camera.position.z = Math.cos(angle) * radius
+      camera.position.y = 0
+      
+      camera.lookAt(0, 0, 0)
+      
+      if (controlsRef.current) {
+        controlsRef.current.target.set(0, 0, 0)
+        controlsRef.current.update()
+      }
+      
+      // Complete animation
+      if (progress >= 1 && onSpinComplete) {
+        onSpinComplete()
+      }
+    }
+  })
+  
+  return null
+}
+
+// Voicemail particle component - simple square with audio reactivity and fade in
+function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onClick, audioAnalyser }) {
+  const spriteRef = useRef()
+  const audioData = useRef(0)
+  const fadeStartTime = useRef(null)
+  const fadeOpacity = useRef(0)
+  
+  useFrame((state) => {
+    // Fade in animation
+    if (fadeStartTime.current === null) {
+      fadeStartTime.current = state.clock.elapsedTime
+    }
+    
+    const fadeElapsed = state.clock.elapsedTime - fadeStartTime.current
+    const fadeDuration = 2 // 2 seconds fade in
+    const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1)
+    
+    // Smooth ease in
+    const easeInCubic = (t) => t * t * t
+    fadeOpacity.current = easeInCubic(fadeProgress)
+    
+    // Get audio reactivity data
+    let audioLevel = 0
+    if (isPlaying && audioAnalyser) {
+      const dataArray = new Uint8Array(audioAnalyser.frequencyBinCount)
+      audioAnalyser.getByteFrequencyData(dataArray)
+      
+      // Get average volume
+      const sum = dataArray.reduce((a, b) => a + b, 0)
+      audioLevel = (sum / dataArray.length) / 255 // Normalize to 0-1
+      
+      // Amplify and smooth the audio data
+      const amplified = Math.pow(audioLevel * 1.5, 1.5)
+      audioData.current = audioData.current * 0.5 + amplified * 0.5
+    } else {
+      audioData.current = 0
+    }
+    
+    if (spriteRef.current) {
+      // Audio-reactive scale
+      const baseScale = 0.4
+      const audioScale = isPlaying ? (1 + audioData.current * 2.5) : 1
+      const finalScale = baseScale * audioScale
+      spriteRef.current.scale.set(finalScale, finalScale, finalScale)
+      
+      // Audio-reactive brightness through opacity - pulses dramatically, multiplied by fade
+      if (spriteRef.current.material) {
+        const baseOpacity = 0.6
+        const audioBrightness = isPlaying ? audioData.current * 1.0 : 0
+        const targetOpacity = Math.min(baseOpacity + audioBrightness, 1)
+        spriteRef.current.material.opacity = targetOpacity * fadeOpacity.current
+      }
+    }
+  })
+  
+  return (
+    <group position={position} onClick={onClick}>
+      {/* Simple square sprite - always white */}
+      <sprite ref={spriteRef} scale={[0.4, 0.4, 0.4]}>
+        <spriteMaterial
+          color="#ffffff"
+          transparent={true}
+          opacity={0}
+          blending={THREE.AdditiveBlending}
+        />
+      </sprite>
+      
+      {/* Click detection sphere (invisible) */}
+      <mesh>
+        <sphereGeometry args={[0.5, 16, 16]} />
+        <meshBasicMaterial transparent opacity={0} />
+      </mesh>
+    </group>
+  )
+}
+
+// Scene content with animated particles and voicemails
+function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser }) {
+  // Voicemail data - centered position
+  const voicemails = [
+    {
+      id: 0,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45624325184_z9xtzz.mp3',
+      position: [0, 0, 0] // Centered
+    }
+  ]
+  
+  const isScattered = animationPhase === 'scattered' || animationPhase === 'interactive'
+  
+  return (
+    <>
+      {/* Camera animation controller */}
+      <CameraAnimationController 
+        animationPhase={animationPhase}
+        onSpinComplete={onSpinComplete}
+        controlsRef={controlsRef}
+      />
+      
+      {/* Scene lighting */}
+      <ambientLight intensity={0.6} />
+      <pointLight position={[10, 10, 10]} intensity={1.5} color="#ff6b9d" />
+      <pointLight position={[-10, -10, -10]} color="#ff1744" intensity={0.8} />
+      <pointLight position={[0, 15, 0]} color="#ffffff" intensity={1} />
+      <pointLight position={[0, -10, 5]} color="#ffc0cb" intensity={0.5} />
+      
+      {/* Model particles - will scatter after camera animation */}
+      <ModelParticles 
+        modelPath="/assets/models/12_1_2025.glb"
+        color="#ffffff"
+        size={0.025}
+        density={0.8}
+        autoRotate={false}
+        noiseStrength={0.02}
+        noiseSpeed={0.6}
+        violent={false}
+        position={[0, 0, 0]}
+        scale={[2, 2, 2]}
+        isTransitioning={isScattered}
+        transitionDuration={10}
+      />
+      
+      {/* Voicemail particles - only visible after scattering */}
+      {animationPhase === 'interactive' && voicemails.map((voicemail) => (
+        <VoicemailParticle
+          key={voicemail.id}
+          position={voicemail.position}
+          voicemailUrl={voicemail.url}
+          isSelected={selectedVoicemail === voicemail.id}
+          isPlaying={playingVoicemail === voicemail.id}
+          onClick={() => onVoicemailClick(voicemail)}
+          audioAnalyser={audioAnalyser}
+        />
+      ))}
+      
+      {/* Post-processing effects - matching God page with heavy bloom for voicemail stars */}
+      <EffectComposer>
+        <Bloom 
+          intensity={animationPhase === 'interactive' ? 1.2 : 0.3}
+          luminanceThreshold={0.3}
+          luminanceSmoothing={0.2}
+          height={300}
+        />
+        <Noise opacity={0.08} />
+        <Vignette eskil={false} offset={0.15} darkness={1.2} />
+        <ChromaticAberration offset={[0.0005, 0.0005]} />
+      </EffectComposer>
+    </>
+  )
+}
 
 function Love() {
+  const audioRef = useRef(null)
+  const voicemailAudioRef = useRef(null)
+  const controlsRef = useRef(null)
+  const audioContextRef = useRef(null)
+  const analyserRef = useRef(null)
+  
+  // Animation phases: 'spinning' -> 'scattered' -> 'interactive'
+  const [animationPhase, setAnimationPhase] = useState('spinning')
+  const [selectedVoicemail, setSelectedVoicemail] = useState(null)
+  const [playingVoicemail, setPlayingVoicemail] = useState(null)
+  
+  // Play background audio when component mounts
+  useEffect(() => {
+    const audio = new Audio('https://res.cloudinary.com/dgbrj4suu/video/upload/glasscannons_nkbda6.mp3')
+    audio.loop = true
+    audio.volume = 0.5
+    audioRef.current = audio
+    
+    // Play audio (with user interaction fallback)
+    const playAudio = () => {
+      audio.play().catch(err => {
+        console.log('Audio autoplay prevented:', err)
+      })
+    }
+    
+    playAudio()
+    
+    // Start particle scatter at 15 seconds (last 10 seconds of spin for slower, smoother scatter)
+    const scatterTimer = setTimeout(() => {
+      setAnimationPhase('scattered')
+    }, 15000) // 15 seconds
+    
+    // Transition to interactive (show voicemail star) at 20 seconds
+    const interactiveTimer = setTimeout(() => {
+      setAnimationPhase('interactive')
+    }, 20000) // 20 seconds - 5 seconds after scatter starts
+    
+    // Cleanup on unmount
+    return () => {
+      clearTimeout(scatterTimer)
+      clearTimeout(interactiveTimer)
+      if (audioRef.current) {
+        audioRef.current.pause()
+        audioRef.current = null
+      }
+      if (voicemailAudioRef.current) {
+        voicemailAudioRef.current.pause()
+        voicemailAudioRef.current = null
+      }
+      if (audioContextRef.current) {
+        audioContextRef.current.close()
+        audioContextRef.current = null
+      }
+    }
+  }, [])
+  
+  // Handle camera spin completion (at 25 seconds) - transition to interactive
+  const handleSpinComplete = () => {
+    // Don't wait for spin to complete - transition earlier
+    // This gets called at 25s but we already transitioned at 20s via timer
+  }
+  
+  // Auto-play voicemail when entering interactive phase
+  useEffect(() => {
+    if (animationPhase === 'interactive') {
+      // Auto-play the first voicemail
+      const firstVoicemail = {
+        id: 0,
+        url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45624325184_z9xtzz.mp3'
+      }
+      handleVoicemailClick(firstVoicemail)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [animationPhase])
+  
+  // Handle voicemail click
+  const handleVoicemailClick = (voicemail) => {
+    setSelectedVoicemail(voicemail.id)
+    setPlayingVoicemail(voicemail.id)
+    
+    // Stop previous voicemail if playing
+    if (voicemailAudioRef.current) {
+      voicemailAudioRef.current.pause()
+      voicemailAudioRef.current.src = '' // Clear source
+    }
+    
+    // Create Web Audio API context and analyser if not exists
+    if (!audioContextRef.current) {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)()
+      analyserRef.current = audioContextRef.current.createAnalyser()
+      analyserRef.current.fftSize = 512 // Higher resolution for better voice detection
+      analyserRef.current.smoothingTimeConstant = 0.3 // Less smoothing for more responsiveness
+      analyserRef.current.minDecibels = -90
+      analyserRef.current.maxDecibels = -10
+    }
+    
+    // Create or reuse audio element
+    let audio = voicemailAudioRef.current
+    let needsSourceCreation = false
+    
+    if (!audio) {
+      audio = new Audio()
+      audio.crossOrigin = "anonymous"
+      voicemailAudioRef.current = audio
+      needsSourceCreation = true
+    }
+    
+    // Set new audio source
+    audio.src = voicemail.url
+    audio.volume = 0.8
+    
+    // Connect audio to analyser (only once)
+    if (needsSourceCreation) {
+      try {
+        const source = audioContextRef.current.createMediaElementSource(audio)
+        source.connect(analyserRef.current)
+        analyserRef.current.connect(audioContextRef.current.destination)
+      } catch (err) {
+        console.log('Audio source already created:', err)
+      }
+    }
+    
+    audio.play().catch(err => {
+      console.log('Voicemail playback error:', err)
+    })
+    
+    // Update playing state when audio ends
+    audio.onended = () => {
+      setPlayingVoicemail(null)
+    }
+  }
+  
   return (
-    <div className="app" style={{ backgroundColor: 'black' }}>
-      <div className="content">
-        <div style={{ textAlign: 'center', color: 'white' }}>
-          <h1 style={{ fontSize: '4rem', marginBottom: '2rem' }}>LOVE</h1>
-          <p style={{ fontSize: '1.5rem', maxWidth: '800px', margin: '0 auto 3rem' }}>
-            Content about Love will go here...
-          </p>
-          <Link 
-            to="/explore" 
-            style={{ 
-              color: 'white', 
-              textDecoration: 'none', 
-              fontSize: '1.2rem',
-              border: '1px solid white',
-              padding: '1rem 2rem',
-              borderRadius: '4px',
-              display: 'inline-block',
-              transition: 'all 0.3s ease'
-            }}
-          >
-            ← Back to Diagram
-          </Link>
-        </div>
-      </div>
+    <div className="app" style={{ backgroundColor: '#0a0a0a', width: '100%', height: '100vh', overflow: 'hidden' }}>
+      {/* Full-screen Three.js Scene */}
+      <Canvas
+        shadows
+        camera={{ position: [0, 0, -5], fov: 60 }}
+        dpr={Math.min(window.devicePixelRatio, 2)}
+        gl={{ 
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance"
+        }}
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#0a0a0a'
+        }}
+      >
+        <Suspense fallback={null}>
+          <SceneContent 
+            animationPhase={animationPhase}
+            onSpinComplete={handleSpinComplete}
+            controlsRef={controlsRef}
+            selectedVoicemail={selectedVoicemail}
+            playingVoicemail={playingVoicemail}
+            onVoicemailClick={handleVoicemailClick}
+            audioAnalyser={analyserRef.current}
+          />
+          
+          {/* Orbit controls - disabled during spinning and scattering animation */}
+          <OrbitControls 
+            ref={controlsRef}
+            enabled={animationPhase === 'interactive'}
+            enableZoom={true}
+            enablePan={true}
+            enableRotate={true}
+            autoRotate={false}
+            minDistance={3}
+            maxDistance={20}
+            minPolarAngle={Math.PI / 6}
+            maxPolarAngle={Math.PI / 1.3}
+          />
+        </Suspense>
+      </Canvas>
+      
+      {/* Development button to skip to voicemail stars */}
+      {animationPhase !== 'interactive' && (
+        <button
+          onClick={() => setAnimationPhase('interactive')}
+          style={{
+            position: 'fixed',
+            top: '2rem',
+            right: '2rem',
+            zIndex: 10,
+            color: 'white',
+            backgroundColor: 'rgba(255, 107, 157, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            padding: '0.5rem 1rem',
+            borderRadius: '4px',
+            cursor: 'pointer',
+            fontSize: '0.8rem',
+            fontWeight: '500',
+            transition: 'all 0.3s ease',
+            pointerEvents: 'auto'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.6)'
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.3)'
+          }}
+        >
+          Skip to Voicemails [DEV]
+        </button>
+      )}
+      
+      {/* Back button */}
+      <Link 
+        to="/explore" 
+        style={{ 
+          position: 'fixed',
+          bottom: '2rem',
+          left: '2rem',
+          zIndex: 10,
+          color: 'white', 
+          textDecoration: 'none', 
+          fontSize: '0.8rem',
+          border: '1px solid rgba(255,255,255,0.3)',
+          padding: '0.6rem 1.2rem',
+          borderRadius: '4px',
+          transition: 'all 0.3s ease',
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          backdropFilter: 'blur(10px)'
+        }}
+        onMouseEnter={(e) => {
+          e.target.style.backgroundColor = 'white'
+          e.target.style.color = 'black'
+        }}
+        onMouseLeave={(e) => {
+          e.target.style.backgroundColor = 'rgba(0,0,0,0.5)'
+          e.target.style.color = 'white'
+        }}
+      >
+        ← Back
+      </Link>
     </div>
   )
 }

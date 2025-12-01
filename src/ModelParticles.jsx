@@ -13,6 +13,7 @@ function ModelParticles({
   noiseSpeed = 0.8,
   violent = false,  // New prop for buzzing violent mode
   isTransitioning = false,  // New prop for transition animation
+  transitionDuration = 2.5,  // Duration of scatter animation in seconds
   ...props 
 }) {
   const points = useRef();
@@ -22,6 +23,7 @@ function ModelParticles({
   const randomOffsets = useRef(null);
   const transitionStartTime = useRef(null);
   const transitionVelocities = useRef(null);
+  const gentleModeOffsets = useRef(null); // Store gentle mode offsets at transition start
   
   // Extract vertices from the model to create particles
   const { particles, originalPositions } = useMemo(() => {
@@ -91,9 +93,22 @@ function ModelParticles({
       const positions = points.current.geometry.getAttribute('position');
       const time = state.clock.elapsedTime;
       
-      // Initialize transition timing
+      // Initialize transition timing and capture gentle mode offsets
       if (isTransitioning && transitionStartTime.current === null) {
         transitionStartTime.current = time;
+        
+        // Capture current gentle mode offsets for smooth blending
+        if (!gentleModeOffsets.current) {
+          gentleModeOffsets.current = [];
+          for (let i = 0; i < positions.count; i++) {
+            const speed = noiseSpeed;
+            gentleModeOffsets.current.push({
+              x: Math.sin(time * speed + i * 0.1) * noiseStrength,
+              y: Math.cos(time * speed * 0.7 + i * 0.2) * noiseStrength,
+              z: Math.sin(time * speed * 0.5 + i * 0.3) * noiseStrength
+            });
+          }
+        }
       }
       
       for (let i = 0; i < positions.count; i++) {
@@ -113,16 +128,22 @@ function ModelParticles({
           };
           
           // Gentle acceleration curve
-          const normalizedTime = Math.min(transitionTime / 2.5, 1); // 2.5 second dispersal
+          const normalizedTime = Math.min(transitionTime / transitionDuration, 1);
           const easedProgress = easeInOutCubic(normalizedTime);
           const dispersionSpeed = easedProgress * 8; // Max distance multiplier
           
           // Smooth turbulence with lower frequency
           const turbulence = Math.sin(time * 1.5 + i * 0.5) * 0.2 * easedProgress;
           
-          nx = velocity.x * dispersionSpeed + turbulence;
-          ny = velocity.y * dispersionSpeed;
-          nz = velocity.z * dispersionSpeed + turbulence * 0.5;
+          // Get starting gentle mode offset for smooth blend
+          const gentleOffset = gentleModeOffsets.current[i];
+          
+          // Blend from gentle mode offset to dispersion
+          const blendFactor = Math.min(normalizedTime * 2, 1); // Blend over first 50% of transition
+          
+          nx = gentleOffset.x * (1 - blendFactor) + (velocity.x * dispersionSpeed + turbulence) * blendFactor;
+          ny = gentleOffset.y * (1 - blendFactor) + (velocity.y * dispersionSpeed) * blendFactor;
+          nz = gentleOffset.z * (1 - blendFactor) + (velocity.z * dispersionSpeed + turbulence * 0.5) * blendFactor;
           
           // Smooth fade opacity with delay
           if (points.current.material) {
