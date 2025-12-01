@@ -90,8 +90,8 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
         currentTargetId.current = playingVoicemail
         const pos = new THREE.Vector3(...targetVoicemail.position)
         
-        // Calculate ideal camera position (in front and slightly offset)
-        const offset = new THREE.Vector3(0, 0.5, 4)
+        // Calculate ideal camera position (to the right and in front for staggered view)
+        const offset = new THREE.Vector3(2, 0.5, 4) // Positioned to the right (X=2)
         targetPosition.current.copy(pos).add(offset)
         targetLookAt.current.copy(pos)
         
@@ -242,17 +242,27 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
     {
       id: 0,
       url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45624325184_z9xtzz.mp3',
-      position: [0, 0, 0] // Center
+      position: [0, 0, 0] // Front-most star
     },
     {
       id: 1,
       url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45627313472_nyrbuj.mp3',
-      position: [-3, 1.5, -2] // Left-back
+      position: [0, 0.4, -3] // Behind first star
     },
     {
       id: 2,
       url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-50393231296_rs2qo2.mp3',
-      position: [3.5, -1, 1.5] // Right-front
+      position: [0, -0.3, -6] // Further back
+    },
+    {
+      id: 3,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45626767616_tqx9df.mp3',
+      position: [0, 0.2, -9] // Third in line
+    },
+    {
+      id: 4,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45617701344_nozfjm.mp3',
+      position: [0, -0.2, -12] // Farthest back
     }
   ]
   
