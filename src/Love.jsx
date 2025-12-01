@@ -11,23 +11,29 @@ import * as THREE from 'three'
 function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef, playingVoicemail, voicemailPositions }) {
   const { camera } = useThree()
   const spinStartTime = useRef(null)
-  const transitionStartTime = useRef(null)
-  const previousTarget = useRef(new THREE.Vector3(0, 0, 0))
   const currentTargetId = useRef(null)
+  const targetPosition = useRef(new THREE.Vector3(0, 0, 0))
+  const targetLookAt = useRef(new THREE.Vector3(0, 0, 0))
+  const isTransitioning = useRef(false)
+  const transitionStartPos = useRef(new THREE.Vector3())
+  const transitionStartTarget = useRef(new THREE.Vector3())
+  const transitionStartTime = useRef(0)
   
   useFrame((state) => {
     // During intro, camera stays in starting position
     if (animationPhase === 'intro') {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false
+      }
       camera.position.set(0, 0, -5)
       camera.lookAt(0, 0, 0)
-      if (controlsRef.current) {
-        controlsRef.current.target.set(0, 0, 0)
-        controlsRef.current.update()
-      }
       return
     }
     
     if (animationPhase === 'spinning' || animationPhase === 'scattered') {
+      if (controlsRef.current) {
+        controlsRef.current.enabled = false
+      }
       if (spinStartTime.current === null) {
         spinStartTime.current = state.clock.elapsedTime
       }
@@ -64,51 +70,89 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
       if (progress >= 1 && onSpinComplete) {
         onSpinComplete()
       }
+      return
     }
     
-    // Interactive phase - move camera to center on playing voicemail
-    if (animationPhase === 'interactive' && playingVoicemail !== null) {
+    // Interactive phase - move camera position near playing voicemail with timed transition
+    if (animationPhase === 'interactive') {
+      // Enable controls when in interactive mode (unless transitioning)
+      if (!isTransitioning.current && controlsRef.current && !controlsRef.current.enabled) {
+        controlsRef.current.enabled = true
+      }
+      
+      if (playingVoicemail === null) return
+      
       const targetVoicemail = voicemailPositions.find(v => v.id === playingVoicemail)
       if (!targetVoicemail) return
       
-      // Start new transition if target changed
+      // Start new transition when voicemail changes
       if (currentTargetId.current !== playingVoicemail) {
-        transitionStartTime.current = state.clock.elapsedTime
-        previousTarget.current.copy(controlsRef.current?.target || new THREE.Vector3(0, 0, 0))
         currentTargetId.current = playingVoicemail
+        const pos = new THREE.Vector3(...targetVoicemail.position)
+        
+        // Calculate ideal camera position (in front and slightly offset)
+        const offset = new THREE.Vector3(0, 0.5, 4)
+        targetPosition.current.copy(pos).add(offset)
+        targetLookAt.current.copy(pos)
+        
+        // Start transition and disable controls temporarily
+        isTransitioning.current = true
+        transitionStartPos.current.copy(camera.position)
+        if (controlsRef.current) {
+          transitionStartTarget.current.copy(controlsRef.current.target)
+        } else {
+          transitionStartTarget.current.set(0, 0, 0)
+        }
+        transitionStartTime.current = state.clock.elapsedTime
+        
+        if (controlsRef.current) {
+          controlsRef.current.enabled = false
+        }
       }
       
-      // Smooth camera transition to voicemail position
-      const transitionDuration = 1.5 // 1.5 seconds
-      const elapsed = state.clock.elapsedTime - transitionStartTime.current
-      const progress = Math.min(elapsed / transitionDuration, 1)
-      
-      // Smooth easing
-      const easeInOutCubic = (t) => {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+      // Animate camera during transition period only
+      if (isTransitioning.current) {
+        const transitionDuration = 2 // 2 seconds
+        const elapsed = state.clock.elapsedTime - transitionStartTime.current
+        const progress = Math.min(elapsed / transitionDuration, 1)
+        
+        // Smooth easing
+        const easeInOutCubic = (t) => {
+          return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
+        }
+        
+        const easedProgress = easeInOutCubic(progress)
+        
+        // Lerp camera position from start to target
+        const newCameraPosition = new THREE.Vector3().lerpVectors(
+          transitionStartPos.current,
+          targetPosition.current,
+          easedProgress
+        )
+        camera.position.copy(newCameraPosition)
+        
+        // Lerp controls target so the voicemail stays centered
+        if (controlsRef.current) {
+          const newTarget = new THREE.Vector3().lerpVectors(
+            transitionStartTarget.current,
+            targetLookAt.current,
+            easedProgress
+          )
+          controlsRef.current.target.copy(newTarget)
+          controlsRef.current.update()
+        }
+        
+        // End transition and re-enable controls
+        if (progress >= 1) {
+          isTransitioning.current = false
+          if (controlsRef.current) {
+            controlsRef.current.enabled = true
+            controlsRef.current.target.copy(targetLookAt.current)
+            controlsRef.current.update()
+          }
+        }
       }
-      
-      const easedProgress = easeInOutCubic(progress)
-      
-      // Target position for controls (where to look at)
-      const targetPos = new THREE.Vector3(...targetVoicemail.position)
-      
-      // Interpolate controls target
-      const newTarget = new THREE.Vector3()
-      newTarget.lerpVectors(previousTarget.current, targetPos, easedProgress)
-      
-      // Calculate camera offset - position camera in front and slightly offset from target
-      const offset = new THREE.Vector3(0, 0.5, 4) // Offset: slightly above and in front
-      const cameraTargetPos = newTarget.clone().add(offset)
-      
-      // Smoothly move camera position
-      camera.position.lerp(cameraTargetPos, 0.1)
-      
-      // Update controls to look at voicemail
-      if (controlsRef.current) {
-        controlsRef.current.target.copy(newTarget)
-        controlsRef.current.update()
-      }
+      // After transition completes, OrbitControls has full control
     }
   })
   
@@ -461,10 +505,10 @@ function Love() {
             audioAnalyser={analyserRef.current}
           />
           
-          {/* Orbit controls - only enabled when interactive */}
+          {/* Orbit controls - enabled during interactive, but temporarily disabled during transitions */}
           <OrbitControls 
             ref={controlsRef}
-            enabled={animationPhase === 'interactive'}
+            enabled={true}
             enableZoom={true}
             enablePan={true}
             enableRotate={true}
