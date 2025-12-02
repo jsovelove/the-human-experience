@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, Environment, useTexture } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration, DotScreen, HueSaturation } from '@react-three/postprocessing'
+import LoadingScreen from './LoadingScreen'
 import * as THREE from 'three'
 
 // Initial single image plane that morphs into grid
@@ -585,7 +586,7 @@ function QuestionsForGod() {
           backgroundColor: 'black'
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingScreen />}>
           <SceneContent 
             imageUrls={imageUrls} 
             cloudName={cloudName}

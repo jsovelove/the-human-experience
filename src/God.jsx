@@ -8,6 +8,7 @@ import ModelParticles from './ModelParticles'
 import ImagePlane from './ImagePlane'
 import ParticleAura from './SpiralEmitter'
 import LikertScale from './LikertScale'
+import LoadingScreen from './LoadingScreen'
 import IntroImage from './IntroImage'
 import * as THREE from 'three'
 
@@ -402,7 +403,7 @@ function God() {
           backgroundColor: 'black'
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingScreen />}>
           <SceneContent 
             imageUrls={imageUrls} 
             selectedIndex={selectedPhotoIndex}

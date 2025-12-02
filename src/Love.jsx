@@ -5,6 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls, useGLTF } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import ModelParticles from './ModelParticles'
+import LoadingScreen from './LoadingScreen'
 import * as THREE from 'three'
 
 // Cloudinary video URL for TV
@@ -942,7 +943,7 @@ function Love() {
             pointerEvents: animationPhase === 'interactive' ? 'auto' : 'none'
           }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingScreen />}>
           <SceneContent 
             animationPhase={animationPhase}
             onSpinComplete={handleSpinComplete}

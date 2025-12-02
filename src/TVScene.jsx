@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, Suspense } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { Environment, useGLTF, useVideoTexture } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import LoadingScreen from './LoadingScreen'
 import * as THREE from 'three'
 
 // Cloudinary video URL
@@ -419,7 +420,7 @@ function TVScene() {
           backgroundColor: 'black'
         }}
       >
-        <Suspense fallback={null}>
+        <Suspense fallback={<LoadingScreen />}>
           <SceneContent 
             isEntering={isEntering} 
             isAnimating={isAnimating}

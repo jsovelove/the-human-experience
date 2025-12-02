@@ -56,6 +56,28 @@ function Soul() {
       width: '100%',
       overflowX: 'hidden'
     }}>
+      {/* Hero image at top */}
+      <div style={{
+        width: '100%',
+        padding: '1rem',
+        paddingBottom: '2rem',
+        boxSizing: 'border-box',
+        display: 'flex',
+        justifyContent: 'center'
+      }}>
+        <img
+          src={`${cloudinaryBaseUrl}/2900f905202497bee2deff0b64b6cd8d_zn1emu`}
+          alt="Soul Hero"
+          style={{
+            width: '100%',
+            maxWidth: '600px',
+            height: 'auto',
+            display: 'block'
+          }}
+          loading="eager"
+        />
+      </div>
+
       {/* Image grid */}
       <div style={{
         display: 'grid',
