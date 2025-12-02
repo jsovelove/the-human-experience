@@ -5,7 +5,6 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import ModelParticles from './ModelParticles'
-import LoadingScreen from './LoadingScreen'
 import * as THREE from 'three'
 
 // Camera animation controller
@@ -514,7 +513,7 @@ function Love() {
           cursor: sceneReady && animationPhase === 'interactive' ? 'pointer' : 'default'
         }}
       >
-        <Suspense fallback={<LoadingScreen />}>
+        <Suspense fallback={null}>
           <SceneContent 
             animationPhase={animationPhase}
             onSpinComplete={handleSpinComplete}
