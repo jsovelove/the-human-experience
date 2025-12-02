@@ -541,40 +541,6 @@ function Love() {
         </Suspense>
       </Canvas>
       
-      {/* Development button to skip to voicemail stars */}
-      {animationPhase !== 'interactive' && (
-        <button
-          onClick={() => sceneReady && setAnimationPhase('interactive')}
-          style={{
-            position: 'fixed',
-            top: '2rem',
-            right: '2rem',
-            zIndex: 10,
-            color: 'white',
-            backgroundColor: 'rgba(255, 107, 157, 0.3)',
-            border: '1px solid rgba(255, 255, 255, 0.5)',
-            padding: '0.5rem 1rem',
-            borderRadius: '4px',
-            cursor: sceneReady ? 'pointer' : 'not-allowed',
-            fontSize: '0.8rem',
-            fontWeight: '500',
-            transition: 'all 0.3s ease',
-            pointerEvents: sceneReady ? 'auto' : 'none',
-            opacity: sceneReady ? 1 : 0.4
-          }}
-          onMouseEnter={(e) => {
-            if (!sceneReady) return
-            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.6)'
-          }}
-          onMouseLeave={(e) => {
-            if (!sceneReady) return
-            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.3)'
-          }}
-        >
-          Skip to Voicemails [DEV]
-        </button>
-      )}
-      
       {/* Back button */}
       <Link 
         to="/explore" 
