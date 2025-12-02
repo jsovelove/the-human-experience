@@ -2,343 +2,14 @@ import './App.css'
 import { Link } from 'react-router-dom'
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { OrbitControls, useGLTF } from '@react-three/drei'
+import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
 import ModelParticles from './ModelParticles'
 import LoadingScreen from './LoadingScreen'
 import * as THREE from 'three'
 
-// Cloudinary video URL for TV
-const cloudName = 'dgbrj4suu'
-const videoId = 'IMG_4755_jpynfo'
-const tvVideoSrc = `https://res.cloudinary.com/${cloudName}/video/upload/${videoId}.mp4`
-
-// Clickable TV in the voicemail chain
-function ClickableTV({ position, onClick, isPlaying }) {
-  const tvGroupRef = useRef()
-  const spriteRef = useRef()
-  const scaleRef = useRef(0)
-  const startTimeRef = useRef(null)
-  const fadeStartTime = useRef(null)
-  const fadeOpacity = useRef(0)
-  
-  useFrame((state) => {
-    // Fade in animation for the star (matching VoicemailParticle)
-    if (fadeStartTime.current === null) {
-      fadeStartTime.current = state.clock.elapsedTime
-    }
-    
-    const fadeElapsed = state.clock.elapsedTime - fadeStartTime.current
-    const fadeDuration = 2 // 2 seconds fade in
-    const fadeProgress = Math.min(fadeElapsed / fadeDuration, 1)
-    
-    // Smooth ease in
-    const easeInCubic = (t) => t * t * t
-    fadeOpacity.current = easeInCubic(fadeProgress)
-    
-    // Animate TV growing out and star shrinking when playing
-    if (isPlaying) {
-      if (startTimeRef.current === null) {
-        startTimeRef.current = state.clock.elapsedTime
-      }
-      
-      const elapsed = state.clock.elapsedTime - startTimeRef.current
-      const duration = 2 // 2 seconds to grow
-      const progress = Math.min(elapsed / duration, 1)
-      
-      // Smooth ease-out cubic
-      const eased = 1 - Math.pow(1 - progress, 3)
-      scaleRef.current = eased
-      
-      // Grow TV
-      if (tvGroupRef.current) {
-        const targetScale = 0.04
-        tvGroupRef.current.scale.set(
-          targetScale * eased,
-          targetScale * eased,
-          targetScale * eased
-        )
-      }
-      
-      // Shrink star
-      if (spriteRef.current && spriteRef.current.material) {
-        const starScale = 0.35 * (1 - eased) // Shrink from 0.35 to 0
-        spriteRef.current.scale.set(starScale, starScale, starScale)
-        spriteRef.current.material.opacity = 0.5 * fadeOpacity.current * (1 - eased)
-      }
-    } else {
-      // Reset for next time
-      startTimeRef.current = null
-      scaleRef.current = 0
-      
-      // Show star at full size when not playing
-      if (spriteRef.current && spriteRef.current.material) {
-        spriteRef.current.material.opacity = 0.5 * fadeOpacity.current
-        spriteRef.current.scale.set(0.35, 0.35, 0.35)
-      }
-    }
-  })
-  
-  const handleClick = (e) => {
-    e.stopPropagation()
-    onClick(e)
-  }
-  
-  return (
-    <group position={position} onClick={handleClick}>
-      {/* Always show the star */}
-      <sprite ref={spriteRef} scale={[0.35, 0.35, 0.35]}>
-        <spriteMaterial
-          color="#ffffff"
-          transparent={true}
-          opacity={0}
-          blending={THREE.AdditiveBlending}
-        />
-      </sprite>
-      
-      {/* TV grows out when playing */}
-      {isPlaying && (
-        <OldTV 
-          position={[0, 0, 0]} 
-          scale={0.04}
-          videoSrc={tvVideoSrc}
-          groupRef={tvGroupRef}
-        />
-      )}
-      
-      {/* Click detection sphere (invisible) */}
-      <mesh>
-        <sphereGeometry args={[0.6, 16, 16]} />
-        <meshBasicMaterial transparent opacity={0} />
-      </mesh>
-    </group>
-  )
-}
-
-// TV Model component with video screen
-function OldTV({ position = [0, 0, 0], scale = 1, videoSrc = null, groupRef }) {
-  const { scene } = useGLTF('/assets/models/old_tv.glb')
-  const screenMeshRef = useRef()
-  const [clonedScene, setClonedScene] = useState(null)
-  const [videoTexture, setVideoTexture] = useState(null)
-  const audioContextRef = useRef(null)
-  const videoRef = useRef(null)
-  
-  // Load video manually with audio control
-  useEffect(() => {
-    if (!videoSrc) return
-    
-    const video = document.createElement('video')
-    video.src = videoSrc
-    video.crossOrigin = 'anonymous'
-    video.loop = true
-    video.playsInline = true
-    video.volume = 1.0
-    videoRef.current = video
-    
-    // Create video texture
-    const texture = new THREE.VideoTexture(video)
-    texture.minFilter = THREE.LinearFilter
-    texture.magFilter = THREE.LinearFilter
-    texture.format = THREE.RGBAFormat
-    
-    // Wait for video to load before setting up audio
-    video.addEventListener('loadedmetadata', () => {
-      console.log('Video metadata loaded, setting up audio...')
-      
-      // Setup audio with reverb
-      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
-      audioContextRef.current = audioContext
-      
-      // Create audio source from video
-      const source = audioContext.createMediaElementSource(video)
-    
-      // Create convolver for reverb
-      const convolver = audioContext.createConvolver()
-      
-      // Generate impulse response for large space reverb
-      const sampleRate = audioContext.sampleRate
-      const length = sampleRate * 4 // 4 seconds reverb for bigger space
-      const impulse = audioContext.createBuffer(2, length, sampleRate)
-      
-      for (let channel = 0; channel < 2; channel++) {
-        const channelData = impulse.getChannelData(channel)
-        for (let i = 0; i < length; i++) {
-          // Exponential decay for natural reverb
-          const decay = Math.exp(-i / (sampleRate * 1.2))
-          channelData[i] = (Math.random() * 2 - 1) * decay
-        }
-      }
-      
-      convolver.buffer = impulse
-      
-      // Create bitcrusher effect using WaveShaper
-      const bitcrusher = audioContext.createWaveShaper()
-      const bits = 3.8 // Bit depth (lower = more crushed, try 4-8)
-      const normfreq = 1 // Sample rate reduction (0-1, lower = more crushed)
-      
-      // Generate bitcrushing curve
-      const samples = 44100
-      const curve = new Float32Array(samples)
-      const step = Math.pow(0.5, bits)
-      
-      for (let i = 0; i < samples; i++) {
-        const x = (i * 2) / samples - 1
-        const y = step * Math.floor(x / step + 0.5)
-        curve[i] = y
-      }
-      
-      bitcrusher.curve = curve
-      
-      // Low-pass filter to simulate sample rate reduction
-      const lowpass = audioContext.createBiquadFilter()
-      lowpass.type = 'lowpass'
-      lowpass.frequency.value = 4000 * normfreq // Reduce high frequencies
-      
-      // Create dry/wet mix
-      const dryGain = audioContext.createGain()
-      const wetGain = audioContext.createGain()
-      const bitcrushGain = audioContext.createGain()
-      dryGain.gain.value = 0.5 // 50% dry
-      wetGain.gain.value = 1.2 // 120% wet (strong reverb)
-      bitcrushGain.gain.value = 0.7 // Bitcrush amount
-      
-      // Connect the audio graph with bitcrusher
-      source.connect(bitcrusher)
-      bitcrusher.connect(lowpass)
-      
-      lowpass.connect(dryGain)
-      lowpass.connect(convolver)
-      convolver.connect(wetGain)
-      
-      dryGain.connect(audioContext.destination)
-      wetGain.connect(audioContext.destination)
-      
-      console.log('Audio graph connected with reverb!')
-      
-      // Try to play video after audio setup
-      attemptPlay()
-    })
-    
-    // Try to play video (will fail until user interaction)
-    const attemptPlay = () => {
-      if (audioContextRef.current?.state === 'suspended') {
-        audioContextRef.current.resume().then(() => {
-          console.log('Audio context resumed')
-        })
-      }
-      video.play().then(() => {
-        console.log('Video playing with audio!')
-      }).catch(e => {
-        console.log('Waiting for user interaction to play video...')
-      })
-    }
-    
-    // Add click listener to start on user interaction
-    const handleInteraction = () => {
-      attemptPlay()
-      document.removeEventListener('click', handleInteraction)
-      document.removeEventListener('keydown', handleInteraction)
-    }
-    
-    document.addEventListener('click', handleInteraction)
-    document.addEventListener('keydown', handleInteraction)
-    
-    // Try to play immediately (works if user already interacted)
-    attemptPlay()
-    
-    setVideoTexture(texture)
-    console.log('Video loaded with reverb audio!')
-    
-    return () => {
-      video.pause()
-      if (audioContextRef.current) {
-        audioContextRef.current.close()
-      }
-      document.removeEventListener('click', handleInteraction)
-      document.removeEventListener('keydown', handleInteraction)
-    }
-  }, [videoSrc])
-  
-  // Clone the scene and optionally apply video texture
-  useEffect(() => {
-    console.log('=== CLONING TV MODEL ===')
-    const clone = scene.clone(true)
-    
-    // Calculate bounding box
-    const box = new THREE.Box3().setFromObject(clone)
-    const size = box.getSize(new THREE.Vector3())
-    console.log('Model Size:', size)
-    
-    // Find and optionally replace the screen material
-    clone.traverse((child) => {
-      if (child.isMesh) {
-        console.log('Mesh found:', child.name)
-        
-        // If it's the screen mesh
-        if (child.name === 'TV003_Glass_0') {
-          console.log('✅ Found TV screen mesh!')
-          screenMeshRef.current = child
-          
-          if (videoTexture) {
-            // Video is 1280x720 (16:9 landscape)
-            // Rotate counter-clockwise 90 degrees
-            videoTexture.rotation = Math.PI / 2
-            videoTexture.center.set(0.5, 0.5)
-            
-            // Zoom out to show more content
-            videoTexture.wrapS = THREE.ClampToEdgeWrapping
-            videoTexture.wrapT = THREE.ClampToEdgeWrapping
-            videoTexture.repeat.set(5, 5) // Show more area (zoom out)
-            videoTexture.offset.set(-0.6, 0) // Keep centered
-            
-            // Create new material with video texture
-            child.material = new THREE.MeshStandardMaterial({
-              map: videoTexture,
-              emissive: new THREE.Color('#ffffff'),
-              emissiveMap: videoTexture,
-              emissiveIntensity: 1.5,
-              toneMapped: false,
-              side: THREE.DoubleSide
-            })
-            console.log('Video texture applied - zoomed out to show more content')
-          } else {
-            // Keep original material but make it slightly emissive (like a turned-off TV)
-            child.material = child.material.clone()
-            child.material.emissive = new THREE.Color('#111111')
-            child.material.emissiveIntensity = 0.1
-            console.log('No video provided - using default screen material')
-          }
-        }
-      }
-    })
-    
-    setClonedScene(clone)
-  }, [scene, videoTexture])
-  
-  // Add subtle glow animation to screen if video is playing
-  useFrame((state) => {
-    if (screenMeshRef.current && videoTexture) {
-      // Subtle pulsing effect
-      const pulse = Math.sin(state.clock.elapsedTime * 0.5) * 0.1 + 1.4
-      screenMeshRef.current.material.emissiveIntensity = pulse
-    }
-  })
-  
-  if (!clonedScene) return null
-  
-  return (
-    <group ref={groupRef} position={position}>
-      <primitive 
-        object={clonedScene} 
-        scale={scale}
-      />
-    </group>
-  )
-}
-
 // Camera animation controller
-function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef, playingVoicemail, voicemailPositions, isTVPlaying, tvPosition }) {
+function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef, playingVoicemail, voicemailPositions }) {
   const { camera } = useThree()
   const spinStartTime = useRef(null)
   const currentTargetId = useRef(null)
@@ -348,7 +19,6 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
   const transitionStartPos = useRef(new THREE.Vector3())
   const transitionStartTarget = useRef(new THREE.Vector3())
   const transitionStartTime = useRef(0)
-  const tvTransitionStarted = useRef(false)
   
   useFrame((state) => {
     // During intro, camera stays in starting position
@@ -402,74 +72,6 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
         onSpinComplete()
       }
       return
-    }
-    
-    // TV camera focus - move camera to focus on TV when playing (PRIORITY OVER VOICEMAIL)
-    if (isTVPlaying && animationPhase === 'interactive') {
-      // Start new transition when TV starts playing
-      if (!tvTransitionStarted.current) {
-        tvTransitionStarted.current = true
-        transitionStartPos.current.copy(camera.position)
-        if (controlsRef.current) {
-          transitionStartTarget.current.copy(controlsRef.current.target)
-        } else {
-          transitionStartTarget.current.set(0, 0, 0)
-        }
-        transitionStartTime.current = state.clock.elapsedTime
-        
-        // Disable controls during transition
-        if (controlsRef.current) {
-          controlsRef.current.enabled = false
-        }
-      }
-      
-      const elapsed = state.clock.elapsedTime - transitionStartTime.current
-      const duration = 2 // 2 seconds transition
-      const progress = Math.min(elapsed / duration, 1)
-      
-      // Smooth ease-in-out
-      const easeInOutCubic = (t) => {
-        return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2
-      }
-      
-      const easedProgress = easeInOutCubic(progress)
-      
-      // Target: camera positioned in front of TV and above, looking at TV
-      const targetPos = new THREE.Vector3(tvPosition[0], tvPosition[1] + 2, tvPosition[2] + 3) // 3 units in front, 2 units up
-      const targetLook = new THREE.Vector3(tvPosition[0], tvPosition[1], tvPosition[2])
-      
-      // Lerp camera position
-      const newCameraPosition = new THREE.Vector3().lerpVectors(
-        transitionStartPos.current,
-        targetPos,
-        easedProgress
-      )
-      camera.position.copy(newCameraPosition)
-      
-      // Lerp controls target
-      if (controlsRef.current) {
-        const newTarget = new THREE.Vector3().lerpVectors(
-          transitionStartTarget.current,
-          targetLook,
-          easedProgress
-        )
-        controlsRef.current.target.copy(newTarget)
-        controlsRef.current.update()
-      }
-      
-      // Re-enable controls after transition
-      if (progress >= 1 && controlsRef.current) {
-        controlsRef.current.enabled = true
-      }
-      
-      // Return early to prevent voicemail camera logic from running
-      return
-    } else if (!isTVPlaying && tvTransitionStarted.current) {
-      // Reset when TV stops playing
-      tvTransitionStarted.current = false
-      if (controlsRef.current) {
-        controlsRef.current.enabled = true
-      }
     }
     
     // Interactive phase - move camera position near playing voicemail with timed transition
@@ -635,7 +237,7 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
 }
 
 // Scene content with animated particles and voicemails
-function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser, onSceneReady, onTVClick, isTVPlaying }) {
+function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser, onSceneReady }) {
   // Voicemail data - galaxy of voicemails scattered around
   const voicemails = [
     {
@@ -665,9 +267,6 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
     }
   ]
   
-  // TV position at the end of the chain
-  const tvPosition = [0, 0, -15]
-  
   const isScattered = animationPhase === 'scattered' || animationPhase === 'interactive'
   
   return (
@@ -679,8 +278,6 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
         controlsRef={controlsRef}
         playingVoicemail={playingVoicemail}
         voicemailPositions={voicemails}
-        isTVPlaying={isTVPlaying}
-        tvPosition={tvPosition}
       />
       
       {/* Scene lighting */}
@@ -709,16 +306,7 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
         onReady={onSceneReady}
       />
       
-      {/* TV star - always visible at end of voicemail chain during interactive */}
-      {animationPhase === 'interactive' && (
-        <ClickableTV
-          position={tvPosition}
-          onClick={onTVClick}
-          isPlaying={isTVPlaying}
-        />
-      )}
-      
-      {/* Voicemail particles - galaxy of voicemails, visible only during interactive */}
+      {/* Voicemail particles - galaxy of voicemails, visible after scattering */}
       {animationPhase === 'interactive' && voicemails.map((voicemail) => (
         <VoicemailParticle
           key={voicemail.id}
@@ -760,7 +348,6 @@ function Love() {
   const [selectedVoicemail, setSelectedVoicemail] = useState(null)
   const [playingVoicemail, setPlayingVoicemail] = useState(null)
   const [sceneReady, setSceneReady] = useState(false)
-  const [isTVPlaying, setIsTVPlaying] = useState(false)
 
   const handleSceneReady = useCallback(() => {
     setSceneReady(true)
@@ -905,21 +492,6 @@ function Love() {
     }
   }
   
-  // Handle TV click - stop any playing voicemail and start TV
-  const handleTVClick = useCallback((e) => {
-    if (e) e.stopPropagation()
-    
-    // Stop any playing voicemail
-    if (voicemailAudioRef.current && playingVoicemail !== null) {
-      voicemailAudioRef.current.pause()
-      setPlayingVoicemail(null)
-      setSelectedVoicemail(null)
-    }
-    
-    // Toggle TV play/pause
-    setIsTVPlaying(prev => !prev)
-  }, [playingVoicemail, isTVPlaying])
-  
   return (
     <div className="app" style={{ backgroundColor: '#0a0a0a', width: '100%', height: '100vh', overflow: 'hidden' }}>
       {/* Full-screen Three.js Scene */}
@@ -932,16 +504,15 @@ function Love() {
           alpha: false,
           powerPreference: "high-performance"
         }}
-          style={{ 
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: '#0a0a0a',
-            cursor: sceneReady && animationPhase === 'interactive' ? 'pointer' : 'default',
-            pointerEvents: animationPhase === 'interactive' ? 'auto' : 'none'
-          }}
+        style={{ 
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: '#0a0a0a',
+          cursor: sceneReady && animationPhase === 'interactive' ? 'pointer' : 'default'
+        }}
       >
         <Suspense fallback={<LoadingScreen />}>
           <SceneContent 
@@ -953,8 +524,6 @@ function Love() {
             onVoicemailClick={handleVoicemailClick}
             audioAnalyser={analyserRef.current}
             onSceneReady={handleSceneReady}
-            onTVClick={handleTVClick}
-            isTVPlaying={isTVPlaying}
           />
           
           {/* Orbit controls - enabled during interactive, but temporarily disabled during transitions */}
@@ -972,6 +541,40 @@ function Love() {
           />
         </Suspense>
       </Canvas>
+      
+      {/* Development button to skip to voicemail stars */}
+      {animationPhase !== 'interactive' && (
+        <button
+          onClick={() => sceneReady && setAnimationPhase('interactive')}
+          style={{
+            position: 'fixed',
+            top: '2rem',
+            right: '2rem',
+            zIndex: 10,
+            color: 'white',
+            backgroundColor: 'rgba(255, 107, 157, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.5)',
+            padding: '0.5rem 1rem',
+            borderRadius: '4px',
+            cursor: sceneReady ? 'pointer' : 'not-allowed',
+            fontSize: '0.8rem',
+            fontWeight: '500',
+            transition: 'all 0.3s ease',
+            pointerEvents: sceneReady ? 'auto' : 'none',
+            opacity: sceneReady ? 1 : 0.4
+          }}
+          onMouseEnter={(e) => {
+            if (!sceneReady) return
+            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.6)'
+          }}
+          onMouseLeave={(e) => {
+            if (!sceneReady) return
+            e.target.style.backgroundColor = 'rgba(255, 107, 157, 0.3)'
+          }}
+        >
+          Skip to Voicemails [DEV]
+        </button>
+      )}
       
       {/* Back button */}
       <Link 
@@ -1006,9 +609,5 @@ function Love() {
   )
 }
 
-// Preload the TV model
-useGLTF.preload('/assets/models/old_tv.glb')
-
 export default Love
-
 
