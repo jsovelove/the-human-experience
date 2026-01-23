@@ -16,6 +16,7 @@ function ModelParticles({
   transitionDuration = 2.5,  // Duration of scatter animation in seconds
   isGathering = false,  // New prop for intro gathering animation
   gatheringDuration = 6,  // Duration of gathering animation in seconds
+  scrollSpread = 0,  // New prop for scroll-based particle spreading (0-1)
   onReady,
   ...props 
 }) {
@@ -269,11 +270,23 @@ function ModelParticles({
           }
         }
         
+        // Apply scroll-based spreading (radial expansion from center)
+        let spreadX = 0, spreadY = 0, spreadZ = 0;
+        if (scrollSpread > 0 && !isTransitioning) {
+          // Calculate direction from center for radial spreading
+          // More horizontal spreading (X, Z) than vertical (Y)
+          const horizontalSpreadFactor = scrollSpread * 50; // Stronger horizontal spread
+          const verticalSpreadFactor = scrollSpread * 1;   // Weaker vertical spread
+          spreadX = origPos.x * horizontalSpreadFactor;
+          spreadY = origPos.y * verticalSpreadFactor;
+          spreadZ = origPos.z * horizontalSpreadFactor;
+        }
+        
         positions.setXYZ(
           i,
-          origPos.x + nx,
-          origPos.y + ny,
-          origPos.z + nz
+          origPos.x + nx + spreadX,
+          origPos.y + ny + spreadY,
+          origPos.z + nz + spreadZ
         );
       }
       

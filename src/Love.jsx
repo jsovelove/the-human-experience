@@ -160,13 +160,34 @@ function CameraAnimationController({ animationPhase, onSpinComplete, controlsRef
 }
 
 // Voicemail particle component - simple square with audio reactivity and fade in
-function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onClick, audioAnalyser, isCenter = false }) {
+function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onClick, audioAnalyser, isCenter = false, isFadingOut = false, isExitParticle = false }) {
   const spriteRef = useRef()
   const audioData = useRef(0)
   const fadeStartTime = useRef(null)
   const fadeOpacity = useRef(0)
+  const fadeOutStartTime = useRef(null)
   
   useFrame((state) => {
+    // Handle fade out
+    if (isFadingOut) {
+      if (fadeOutStartTime.current === null) {
+        fadeOutStartTime.current = state.clock.elapsedTime
+      }
+      
+      const fadeOutElapsed = state.clock.elapsedTime - fadeOutStartTime.current
+      const fadeOutDuration = 2 // 2 seconds fade out
+      const fadeOutProgress = Math.min(fadeOutElapsed / fadeOutDuration, 1)
+      
+      // Smooth ease out
+      const easeOutCubic = (t) => 1 - Math.pow(1 - t, 3)
+      fadeOpacity.current = 1 - easeOutCubic(fadeOutProgress)
+      
+      if (spriteRef.current && spriteRef.current.material) {
+        spriteRef.current.material.opacity = fadeOpacity.current * 0.5
+      }
+      return
+    }
+    
     // Fade in animation
     if (fadeStartTime.current === null) {
       fadeStartTime.current = state.clock.elapsedTime
@@ -216,10 +237,10 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
   
   return (
     <group position={position} onClick={onClick}>
-      {/* Simple square sprite - always white */}
+      {/* Simple square sprite - white for normal, golden for exit particle */}
       <sprite ref={spriteRef} scale={[0.4, 0.4, 0.4]}>
         <spriteMaterial
-          color="#ffffff"
+          color={isExitParticle ? "#ffd700" : "#ffffff"}
           transparent={true}
           opacity={0}
           blending={THREE.AdditiveBlending}
@@ -236,7 +257,7 @@ function VoicemailParticle({ position, voicemailUrl, isSelected, isPlaying, onCl
 }
 
 // Scene content with animated particles and voicemails
-function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser, onSceneReady }) {
+function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoicemail, playingVoicemail, onVoicemailClick, audioAnalyser, onSceneReady, isFadingOut }) {
   // Voicemail data - galaxy of voicemails scattered around
   const voicemails = [
     {
@@ -263,6 +284,16 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
       id: 4,
       url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/voicemail-45617701344_nozfjm.mp3',
       position: [0, -0.2, -12] // Farthest back
+    },
+    {
+      id: 5,
+      url: 'https://res.cloudinary.com/dgbrj4suu/video/upload/v1769065861/voicemail-40623044000_fgneqy.m4a',
+      position: [0, 0.3, -15] // New voicemail
+    },
+    {
+      id: 6,
+      url: null, // Exit particle - no audio
+      position: [0, -0.1, -18] // Farthest back - exit particle
     }
   ]
   
@@ -316,6 +347,8 @@ function SceneContent({ animationPhase, onSpinComplete, controlsRef, selectedVoi
           onClick={() => onVoicemailClick(voicemail)}
           audioAnalyser={audioAnalyser}
           isCenter={voicemail.id === 0}
+          isFadingOut={isFadingOut}
+          isExitParticle={voicemail.id === 6}
         />
       ))}
       
@@ -347,6 +380,7 @@ function Love() {
   const [selectedVoicemail, setSelectedVoicemail] = useState(null)
   const [playingVoicemail, setPlayingVoicemail] = useState(null)
   const [sceneReady, setSceneReady] = useState(false)
+  const [isFadingOut, setIsFadingOut] = useState(false)
 
   const handleSceneReady = useCallback(() => {
     setSceneReady(true)
@@ -427,6 +461,18 @@ function Love() {
   
   // Handle voicemail click
   const handleVoicemailClick = (voicemail) => {
+    // Special exit particle (id 6) - trigger fade out
+    if (voicemail.id === 6) {
+      setIsFadingOut(true)
+      // Stop any playing audio
+      if (voicemailAudioRef.current) {
+        voicemailAudioRef.current.pause()
+      }
+      setPlayingVoicemail(null)
+      setSelectedVoicemail(null)
+      return
+    }
+    
     // If clicking the same voicemail that's playing, stop it
     if (playingVoicemail === voicemail.id && voicemailAudioRef.current) {
       voicemailAudioRef.current.pause()
@@ -442,6 +488,11 @@ function Love() {
     if (voicemailAudioRef.current) {
       voicemailAudioRef.current.pause()
       voicemailAudioRef.current.src = '' // Clear source
+    }
+    
+    // Skip audio setup if no URL (shouldn't happen after exit particle check, but safety)
+    if (!voicemail.url) {
+      return
     }
     
     // Create Web Audio API context and analyser if not exists
@@ -523,6 +574,7 @@ function Love() {
             onVoicemailClick={handleVoicemailClick}
             audioAnalyser={analyserRef.current}
             onSceneReady={handleSceneReady}
+            isFadingOut={isFadingOut}
           />
           
           {/* Orbit controls - enabled during interactive, but temporarily disabled during transitions */}

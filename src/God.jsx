@@ -1,122 +1,18 @@
 import './App.css'
 import { Link, useNavigate } from 'react-router-dom'
-import { useState, useEffect, Suspense, useMemo, useRef } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
+import { useState, useEffect, Suspense, useRef } from 'react'
+import { Canvas } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration } from '@react-three/postprocessing'
+import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration, DotScreen } from '@react-three/postprocessing'
 import ModelParticles from './ModelParticles'
-import ImagePlane from './ImagePlane'
 import ParticleAura from './SpiralEmitter'
 import LikertScale from './LikertScale'
-import IntroImage from './IntroImage'
 import * as THREE from 'three'
 
-// Camera controller that animates to target positions
-function CameraController({ targetPosition, isZoomedIn, defaultPosition, controlsRef }) {
-  const { camera } = useThree()
-  const smoothedPosition = useRef(new THREE.Vector3(...defaultPosition))
-  const smoothedLookAt = useRef(new THREE.Vector3(0, 0, 0))
-  const wasZoomedIn = useRef(false)
-  
-  useFrame(() => {
-    if (isZoomedIn && targetPosition) {
-      // Zoomed into an image - animate to photo
-      wasZoomedIn.current = true
-      
-      const photoPos = new THREE.Vector3(...targetPosition)
-      const defaultPos = new THREE.Vector3(...defaultPosition)
-      
-      // Direction from photo to default camera position
-      const dir = defaultPos.clone().sub(photoPos)
-      const distance = Math.max(dir.length(), 1)
-      dir.normalize()
-      
-      // Keep camera slightly away from photo along this direction
-      const viewDistance = Math.min(distance, 2.5)
-      const goalPosition = photoPos.clone().add(dir.multiplyScalar(viewDistance))
-      const goalLookAt = photoPos.clone()
-      
-      smoothedPosition.current.lerp(goalPosition, 0.05)
-      smoothedLookAt.current.lerp(goalLookAt, 0.05)
-      
-      camera.position.copy(smoothedPosition.current)
-      camera.lookAt(smoothedLookAt.current)
-      
-      if (controlsRef && controlsRef.current) {
-        controlsRef.current.target.copy(smoothedLookAt.current)
-        controlsRef.current.update()
-      }
-    } else if (wasZoomedIn.current) {
-      // Just exited zoom mode - animate back to default position
-      const goalPosition = new THREE.Vector3(...defaultPosition)
-      const goalLookAt = new THREE.Vector3(0, 0, 0)
-      
-      smoothedPosition.current.lerp(goalPosition, 0.05)
-      smoothedLookAt.current.lerp(goalLookAt, 0.05)
-      
-      camera.position.copy(smoothedPosition.current)
-      camera.lookAt(smoothedLookAt.current)
-      
-      if (controlsRef && controlsRef.current) {
-        controlsRef.current.target.copy(smoothedLookAt.current)
-        controlsRef.current.update()
-      }
-      
-      // Check if we're close enough to default position to stop animating
-      const distanceToDefault = camera.position.distanceTo(goalPosition)
-      if (distanceToDefault < 0.1) {
-        wasZoomedIn.current = false
-      }
-    }
-    // Otherwise, let OrbitControls handle everything
-  })
-  
-  return null
-}
-
-// Generate consistent image positions
-function getImagePositions(count) {
-  const seededRandom = (seed) => {
-    const x = Math.sin(seed * 9999) * 10000
-    return x - Math.floor(x)
-  }
-  
-  const positions = []
-  for (let i = 0; i < count; i++) {
-    const seed = i * 137.5
-    const theta = seededRandom(seed) * Math.PI * 2
-    const phi = Math.acos(2 * seededRandom(seed + 1) - 1)
-    const r = 12 + seededRandom(seed + 2) * 16
-    
-    const x = r * Math.sin(phi) * Math.cos(theta)
-    const y = (r * Math.cos(phi)) * 0.5
-    const z = r * Math.sin(phi) * Math.sin(theta) * 0.3 - 8
-    
-    positions.push([x, y, z])
-  }
-  return positions
-}
-
-// Scene content with tiny photo particles floating in the aura
-function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imagePositions, showIntro, onIntroComplete, cloudName, isTransitioning }) {
-  const imageData = useMemo(() => {
-    return imageUrls.map((url, i) => ({
-      url,
-      position: imagePositions[i],
-      scale: 0.08
-    }))
-  }, [imageUrls, imagePositions])
-  
+// Scene content - just the particle figures and aura
+function SceneContent({ isTransitioning, scrollSpread }) {
   return (
     <>
-      {/* Intro image that dissolves */}
-      {showIntro && (
-        <IntroImage 
-          imageUrl={`https://res.cloudinary.com/${cloudName}/image/upload/d12105f5-62db-469d-be53-26b48fe0aaf4_j88lw8.png`}
-          onDismiss={onIntroComplete}
-        />
-      )}
-      
       {/* Scene lighting */}
       <ambientLight intensity={0.8} />
       <pointLight position={[10, 10, 10]} intensity={1} />
@@ -124,93 +20,80 @@ function SceneContent({ imageUrls, onImageClick, selectedIndex, isZoomedIn, imag
       <pointLight position={[0, 5, 0]} color="#ffffff" intensity={0.5} />
       
       {/* Three particle models side by side - all white, very gentle buzzing, stretched on z-axis */}
-      <group position={[0, 0, 0]}>
+      <group position={[0, -8, 0]}>
+        {/* Particle cloud aura surrounding the models */}
+        <ParticleAura 
+          position={[0, 0, 0]}
+          particleCount={2000}
+          radius={15}
+          color="#ffffff"
+          opacity={0.3}
+          size={0.08}
+          scrollSpread={scrollSpread}
+        />
+        
         {/* Left model */}
         <ModelParticles 
           modelPath="/low_poly_dummy__human_figure.glb"
           color="#ffffff"
-          size={0.04}
-          density={0.5}
+          size={0.14}
+          density={20}
           autoRotate={false}
           noiseStrength={0.1}
-          noiseSpeed={1.0}
+          noiseSpeed={0.01}
           violent={true}
           position={[-8, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
           isTransitioning={isTransitioning}
+          scrollSpread={scrollSpread}
         />
         
         {/* Center model */}
         <ModelParticles 
           modelPath="/low_poly_dummy__human_figure.glb"
           color="#ffffff"
-          size={0.04}
-          density={0.5}
+          size={0.14}
+          density={10}
           autoRotate={false}
           noiseStrength={0.1}
-          noiseSpeed={1.0}
+          noiseSpeed={0.01}
           violent={true}
           position={[0, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
           isTransitioning={isTransitioning}
+          scrollSpread={scrollSpread}
         />
         
         {/* Right model */}
         <ModelParticles 
           modelPath="/low_poly_dummy__human_figure.glb"
           color="#ffffff"
-          size={0.04}
-          density={0.5}
+          size={0.14}
+          density={10}
           autoRotate={false}
           noiseStrength={0.1}
-          noiseSpeed={1.0}
+          noiseSpeed={0.01}
           violent={true}
           position={[8, 0, 0]}
           scale={[1.3, 1.3, 2.0]}
           rotation={[-Math.PI / 2, 0, 0]}
           isTransitioning={isTransitioning}
+          scrollSpread={scrollSpread}
         />
       </group>
       
-      {/* Energetic particle aura surrounding the figures */}
-      <ParticleAura 
-        count={3000}
-        color="#aabbcc"
-        size={0.03}
-        spread={24}
-        height={16}
-        driftSpeed={0.8}
-        isTransitioning={isTransitioning}
-      />
-      
-      {/* Tiny photo particles floating in the aura */}
-      {imageData.map((img, index) => (
-        <Suspense key={index} fallback={null}>
-          <ImagePlane
-            url={img.url}
-            position={img.position}
-            scale={img.scale}
-            index={index}
-            isSelected={index === selectedIndex}
-            isZoomedIn={isZoomedIn && index === selectedIndex}
-            onClick={() => onImageClick(index)}
-          />
-        </Suspense>
-      ))}
-      
       {/* Post-processing effects - Lo-fi aesthetic */}
       <EffectComposer>
-        <Bloom 
-          intensity={0.3} 
-          luminanceThreshold={0.3} 
-          luminanceSmoothing={0.2} 
-          height={300} 
+        
+        <DotScreen 
+          angle={Math.PI * 0.5}
+          scale={0.9}
+          opacity={0.1}
         />
         <Noise opacity={0.08} />
-        <Vignette eskil={false} offset={0.15} darkness={1.2} />
-        <ChromaticAberration offset={[0.0005, 0.0005]} />
+        
       </EffectComposer>
     </>
   )
@@ -222,62 +105,117 @@ function God() {
   // Cloudinary configuration
   const cloudName = 'dgbrj4suu'
   
-  const imageIds = [
-    '7_page4_ncqs7w',
-    '15_page4_lcicci',
-    '17_page4_ixthmq',
-    '14_page4_xvwgby',
-    '16_page4_qviww4',
-    '13_page4_r5ptw6',
-    '12_page4_uer6lc',
-    '11_page4_stnplx',
-    '8_page4_t5ms6w',
-    '4_page4_qoxte7',
-    '10_page4_eccsha',
-    '9_page4_fdyfhv',
-    '2_page4_n4wti4',
-    '3_page4_sfajxx',
-    '6_page4_gavj8x',
-    '1_page4_wf3q9j',
-    '5_page4_ojdw6u'
-  ]
-  
   // Generate Cloudinary URLs
   const getCloudinaryUrl = (imageId) => {
     return `https://res.cloudinary.com/${cloudName}/image/upload/${imageId}.png`
   }
   
-  const imageUrls = imageIds.map(id => getCloudinaryUrl(id))
+  // Image and text pairs - each image has associated text and positioning
+  const imageTextPairs = [
+    {
+      imageId: '10_page4_eccsha',
+      text: 'Everything is god, god is a rock, god is a dog, god is a xylophone, god is your grandma.',
+      textPosition: { top: '200px', left: '70%', width: '25%' },
+      imagePosition: { top: '200px', left: '8%', width: '45%' }
+    },
+    {
+      imageId: '7_page4_ncqs7w',
+      text: 'Love and yummy food, and friendship and identity, sexuality?',
+      imagePosition: { top: '830px', left: '60%', width: '34%' }
+    },
+    {
+      imageId: '15_page4_lcicci',
+      text: '.........................',
+      imagePosition: { top: '3000px', left: '10%', width: '14%' },
+    },
+    {
+      imageId: '17_page4_ixthmq',
+      text: "What isn't?",
+      imagePosition: { top: '1000px', left: '30%', width: '24%' }
+    },
+    {
+      imageId: '14_page4_xvwgby',
+      text: '.......',
+      imagePosition: { top: '950px', left: '8%', width: '24%' },
+      textPosition: { top: '1000px', left: '40%', width: '25%' }
+    },
+    {
+      imageId: '16_page4_qviww4',
+      text: 'Water.',
+      imagePosition: { top: '1550px', left: '65%', width: '24%' },
+      textPosition: { top: '1550px', left: '35%', width: '30%' }
+    },
+    {
+      imageId: '13_page4_r5ptw6',
+      text: '..........................',
+      imagePosition: { top: '2100px', left: '10%', width: '24%' },
+      textPosition: { top: '2150px', left: '32%', width: '26%' }
+    },
+    {
+      imageId: '12_page4_uer6lc',
+      text: '..............',
+      imagePosition: { top: '2050px', left: '50%', width: '24%' }
+    },
+    {
+      imageId: '11_page4_stnplx',
+      text: 'The river.',
+      imagePosition: { top: '2700px', left: '5%', width: '24%' },
+      textPosition: { top: '2750px', left: '8%', width: '27%' }
+    },
+    {
+      imageId: '8_page4_t5ms6w',
+      text: "I don't know, but I know what a cave is.",
+      imagePosition: { top: '2650px', left: '60%', width: '24%' }
+    },
+    {
+      imageId: '4_page4_qoxte7',
+      text: 'The maker of many linked chain.',
+      imagePosition: { top: '3300px', left: '35%', width: '24%' },
+      textPosition: { top: '3350px', left: '10%', width: '25%' }
+    },
+    {
+      imageId: '9_page4_fdyfhv',
+      text: '........................',
+      imagePosition: { top: '3850px', left: '65%', width: '24%' },
+      textPosition: { top: '3950px', left: '50%', width: '28%' }
+    },
+    {
+      imageId: '2_page4_n4wti4',
+      text: 'The spirit of the universe, fate, time, being, becoming, loving, creating, living!',
+      imagePosition: { top: '4500px', left: '30%', width: '24%' },
+      textPosition: { top: '4550px', left: '35%', width: '30%' }
+    },
+    {
+      imageId: '3_page4_sfajxx',
+      text: '........................',
+      imagePosition: { top: '5100px', left: '10%', width: '24%' },
+      textPosition: { top: '5150px', left: '32%', width: '25%' }
+    },
+    {
+      imageId: '6_page4_gavj8x',
+      text: 'Energy / experience',
+      imagePosition: { top: '5050px', left: '60%', width: '24%' },
+      textPosition: { top: '5390px', left: '51%', width: '25%' }
+    },
+    {
+      imageId: '1_page4_wf3q9j',
+      text: '[God is] carrot cake, the possibilities of drugs at an underground party, job security.',
+      imagePosition: { top: '5700px', left: '5%', width: '24%' }
+    },
+    {
+      imageId: '5_page4_ojdw6u',
+      text: 'God is love I think and the string between us.',
+      imagePosition: { top: '6300px', left: '50%', width: '24%' }
+    }
+  ]
 
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0)
-  const [isZoomedIn, setIsZoomedIn] = useState(false)
   const [showData, setShowData] = useState(false)
-  const [showIntro, setShowIntro] = useState(true)
   const [likertData, setLikertData] = useState([])
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [fadeOverlay, setFadeOverlay] = useState(0)
+  const [scrollSpread, setScrollSpread] = useState(0)
   const controlsRef = useRef(null)
-  
-  // Pre-calculate image positions
-  const imagePositions = useMemo(() => getImagePositions(imageIds.length), [imageIds.length])
-  const defaultCameraPosition = [0, 0, 35]
-
-  // Navigation functions
-  const goToPrevPhoto = () => {
-    setSelectedPhotoIndex((prev) => (prev - 1 + imageIds.length) % imageIds.length)
-  }
-  
-  const goToNextPhoto = () => {
-    setSelectedPhotoIndex((prev) => (prev + 1) % imageIds.length)
-  }
-  
-  const toggleZoom = () => {
-    setIsZoomedIn(!isZoomedIn)
-  }
-  
-  const zoomOut = () => {
-    setIsZoomedIn(false)
-  }
+  const scrollContainerRef = useRef(null)
   
   // Handle transition to Questions for God page
   const handleTransitionToQuestions = (e) => {
@@ -336,6 +274,26 @@ function God() {
     return values
   }
 
+  // Track scroll position for particle spreading
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current
+    if (!scrollContainer) return
+
+    const handleScroll = () => {
+      const scrollY = scrollContainer.scrollTop
+      const maxScroll = 4500 // Scroll distance over which particles spread (fast spread at top)
+      // Normalize scroll to 0-1, then apply easing
+      const normalized = Math.min(scrollY / maxScroll, 1)
+      // Ease-out cubic for smooth spreading
+      const eased = 1 - Math.pow(1 - normalized, 3)
+      console.log('Scroll Y:', scrollY, 'Spread:', eased) // Debug log
+      setScrollSpread(eased)
+    }
+
+    scrollContainer.addEventListener('scroll', handleScroll)
+    return () => scrollContainer.removeEventListener('scroll', handleScroll)
+  }, [])
+
   // Load and parse CSV data
   useEffect(() => {
     fetch('/likert-scale-data.csv')
@@ -382,316 +340,590 @@ function God() {
   }, [])  
 
   return (
-    <div className="app" style={{ backgroundColor: 'black', width: '100%', height: '100vh', overflow: 'hidden' }}>
-      {/* Full-screen Three.js Scene */}
+    <div ref={scrollContainerRef} className="app" style={{ backgroundColor: 'black', width: '100%', minHeight: '100vh', overflow: 'auto' }}>
+      <style>
+        {`
+          @font-face {
+            font-family: 'GodFont';
+            src: url('/fonts/FA_PTGWDOBSHK.ttf') format('truetype');
+          }
+          
+          @font-face {
+            font-family: 'QuestionFont';
+            src: url('/fonts/FA_MNGEZKQIKB.ttf') format('truetype');
+          }
+        `}
+      </style>
+      
+      {/* Three.js Scene - Top section */}
       <Canvas
         shadows
-        camera={{ position: [0, 0, 35], fov: 55 }}
+        camera={{ position: [0, 0, 60], fov: 55 }}
         dpr={Math.min(window.devicePixelRatio, 2)}
         gl={{ 
           antialias: true,
-          alpha: false,
+          alpha: true,
           powerPreference: "high-performance"
         }}
         style={{ 
-          position: 'fixed',
-          top: 0,
-          left: 0,
           width: '100%',
-          height: '100%',
-          backgroundColor: 'black'
+          height: '150vh',
+          backgroundColor: 'transparent',
+          display: 'block',
+          margin: '-50vh auto 0'
         }}
       >
         <Suspense fallback={null}>
           <SceneContent 
-            imageUrls={imageUrls} 
-            selectedIndex={selectedPhotoIndex}
-            isZoomedIn={isZoomedIn}
-            imagePositions={imagePositions}
-            showIntro={showIntro}
-            onIntroComplete={() => setShowIntro(false)}
-            cloudName={cloudName}
             isTransitioning={isTransitioning}
-            onImageClick={(index) => {
-              setSelectedPhotoIndex(index)
-              setIsZoomedIn(true)
-            }}
+            scrollSpread={scrollSpread}
           />
           
-          {/* Camera controller for zooming into photos */}
-          <CameraController 
-            targetPosition={imagePositions[selectedPhotoIndex]}
-            isZoomedIn={isZoomedIn}
-            defaultPosition={defaultCameraPosition}
-            controlsRef={controlsRef}
-          />
-          
-          {/* Orbit controls for looking around - disabled when viewing a specific image */}
+          {/* Orbit controls for looking around */}
           <OrbitControls 
             ref={controlsRef}
-            enabled={!isZoomedIn}
-            enableZoom={true}
+            enableZoom={false}
             enablePan={true}
             enableRotate={true}
             autoRotate={false}
-            minDistance={5}
-            maxDistance={60}
             minPolarAngle={Math.PI / 4}
             maxPolarAngle={Math.PI / 1.5}
           />
         </Suspense>
       </Canvas>
       
-      {/* Navigation controls - centered at bottom */}
+      {/* Title */}
       <div style={{
-        position: 'fixed',
-        bottom: '2rem',
-        left: '50%',
-        transform: 'translateX(-50%)',
-        zIndex: 10,
-        display: 'flex',
-        alignItems: 'center',
-        gap: '1.5rem',
-        opacity: showIntro ? 0 : 1,
-        transition: 'opacity 1s ease',
-        pointerEvents: showIntro ? 'none' : 'auto'
+        textAlign: 'center',
+        paddingTop: '3rem',
+        marginBottom: '6rem'
       }}>
-        <button
-          onClick={() => {
-            setIsZoomedIn(true)
-            setShowData(false)
-          }}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'white',
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'opacity 0.3s ease',
-            opacity: isZoomedIn && !showData ? 1 : 0.5,
-            padding: 0,
-            outline: 'none',
-            letterSpacing: '0.05em',
-            fontWeight: isZoomedIn && !showData ? '600' : '400'
-          }}
-          onMouseEnter={(e) => e.target.style.opacity = '1'}
-          onMouseLeave={(e) => e.target.style.opacity = isZoomedIn && !showData ? '1' : '0.5'}
-        >
-          DRAWINGS
-        </button>
-        
-        <button
-          onClick={() => {
-            setShowData(true)
-            setIsZoomedIn(false)
-          }}
-          style={{
-            background: 'transparent',
-            border: 'none',
-            color: 'white',
-            fontSize: '0.8rem',
-            cursor: 'pointer',
-            transition: 'opacity 0.3s ease',
-            opacity: showData ? 1 : 0.5,
-            padding: 0,
-            outline: 'none',
-            letterSpacing: '0.05em',
-            fontWeight: showData ? '600' : '400'
-          }}
-          onMouseEnter={(e) => e.target.style.opacity = '1'}
-          onMouseLeave={(e) => e.target.style.opacity = showData ? '1' : '0.5'}
-        >
-          DATA
-        </button>
-        
-        <Link 
-          to="/draw-god" 
-          style={{ 
-            color: 'white', 
-            textDecoration: 'none', 
-            fontSize: '0.8rem',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'opacity 0.3s ease',
-            opacity: 0.5,
-            padding: 0,
-            outline: 'none',
-            letterSpacing: '0.05em',
-            fontWeight: '400',
-            background: 'transparent'
-          }}
-          onMouseEnter={(e) => e.target.style.opacity = '1'}
-          onMouseLeave={(e) => e.target.style.opacity = '0.5'}
-        >
-          PLEASE DRAW GOD
-        </Link>
-        
-        <a 
-          href="/questions-for-god"
-          onClick={handleTransitionToQuestions}
-          style={{ 
-            color: 'white', 
-            textDecoration: 'none', 
-            fontSize: '0.8rem',
-            border: 'none',
-            cursor: 'pointer',
-            transition: 'opacity 0.3s ease',
-            opacity: 0.5,
-            padding: 0,
-            outline: 'none',
-            letterSpacing: '0.05em',
-            fontWeight: '400',
-            background: 'transparent'
-          }}
-          onMouseEnter={(e) => e.target.style.opacity = '1'}
-          onMouseLeave={(e) => e.target.style.opacity = '0.5'}
-        >
-          QUESTIONS FOR GOD
-        </a>
+        <h1 style={{
+          fontFamily: 'GodFont, serif',
+          fontSize: '20rem',
+          color: 'white',
+          margin: 0,
+          letterSpacing: '0.2em',
+          fontWeight: 'normal'
+        }}>
+          GOD
+        </h1>
       </div>
-
-      {/* Photo navigation arrows - only show when viewing images */}
-      {isZoomedIn && !showData && (
+      
+      {/* Diagram Image */}
+      <div style={{
+        textAlign: 'center',
+        marginBottom: '4rem'
+      }}>
+        <img 
+          src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769109607/diagram_idnm6y.png"
+          alt="Diagram"
+          style={{
+            maxWidth: '800px',
+            width: '100%',
+            height: 'auto',
+            display: 'block',
+            margin: '0 auto'
+          }}
+        />
+      </div>
+      
+      {/* Collage section */}
+      <div style={{
+        backgroundColor: 'black',
+        padding: '8rem 0',
+        position: 'relative'
+      }}>
         <div style={{
-          position: 'fixed',
-          bottom: '5rem',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
+          width: '100%',
+          margin: '0 auto',
+          position: 'relative',
+          height: '850px'
+        }}>
+          {/* Image 1 */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116927/6ef917623042479010aef7cf787a6e8d_cjkngi.jpg"
+            alt="Gallery image 1"
+            style={{
+              position: 'absolute',
+              left: '2%',
+              top: '20px',
+              maxWidth: '200px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 2 */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116440/ef44033aef54a6c972d96dc42eb81288_h9oy29.jpg"
+            alt="Gallery image 2"
+            style={{
+              position: 'absolute',
+              left: '28%',
+              top: '80px',
+              maxWidth: '180px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 3 */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116930/dea4d49075588a03ac54245e2d472e08_bl6gtq.jpg"
+            alt="Gallery image 3"
+            style={{
+              position: 'absolute',
+              right: '2%',
+              top: '30px',
+              maxWidth: '180px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 4 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116932/62158c78d3ea7e328ade330226869c7b_m7lsvf.jpg"
+            alt="Gallery image 4"
+            style={{
+              position: 'absolute',
+              left: '5%',
+              top: '300px',
+              maxWidth: '190px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 5 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116930/160c1921c6748753bb042dbf46708e9e_zzjlvf.jpg"
+            alt="Gallery image 5"
+            style={{
+              position: 'absolute',
+              left: '48%',
+              transform: 'translateX(-50%)',
+              top: '350px',
+              maxWidth: '170px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 6 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116927/b0935f553b358c2a37c8e403a0d50893_zaxtch.jpg"
+            alt="Gallery image 6"
+            style={{
+              position: 'absolute',
+              right: '3%',
+              top: '320px',
+              maxWidth: '185px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 7 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769116928/61e56b5f25d4e9a07df07ae11a8223b3_vplyfp.jpg"
+            alt="Gallery image 7"
+            style={{
+              position: 'absolute',
+              left: '52%',
+              top: '150px',
+              maxWidth: '165px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 8 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769122644/f94049e7647d4337ea3636ad4b140ba9_joq6g1.jpg"
+            alt="Gallery image 8"
+            style={{
+              position: 'absolute',
+              left: '32%',
+              top: '240px',
+              maxWidth: '175px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 9 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769122725/ac79e0729e3c05fe967d6acd98e2af6e_abzwtg.jpg"
+            alt="Gallery image 9"
+            style={{
+              position: 'absolute',
+              left: '65%',
+              top: '200px',
+              maxWidth: '160px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 10 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769122938/15a46233f9ff53c91588c2618aefc4cd_aaqt3f.jpg"
+            alt="Gallery image 10"
+            style={{
+              position: 'absolute',
+              left: '12%',
+              top: '450px',
+              maxWidth: '170px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 11 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769122940/6ea768de13018412a46a3af8239240e1_r01c6y.jpg"
+            alt="Gallery image 11"
+            style={{
+              position: 'absolute',
+              right: '8%',
+              top: '480px',
+              maxWidth: '165px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 12 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123205/eeee4114397030e4a582c94fb3f20964_dgiseu.jpg"
+            alt="Gallery image 12"
+            style={{
+              position: 'absolute',
+              left: '75%',
+              top: '420px',
+              maxWidth: '155px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 13 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123210/5c82c2cd8878e7a8dbcb3da4ce3b9555_bbmvms.jpg"
+            alt="Gallery image 13"
+            style={{
+              position: 'absolute',
+              left: '40%',
+              top: '520px',
+              maxWidth: '160px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 14 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123476/109db6dbd4e9366cab2d4611ebd0feea_lb3xi8.jpg"
+            alt="Gallery image 14"
+            style={{
+              position: 'absolute',
+              left: '58%',
+              top: '560px',
+              maxWidth: '155px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 15 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123416/f322d29933724f442545722dfb1c70ee_xpqzni.jpg"
+            alt="Gallery image 15"
+            style={{
+              position: 'absolute',
+              left: '22%',
+              top: '580px',
+              maxWidth: '150px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 16 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123624/a8e3d15712c1f171c568705516260a85_ywsfaa.jpg"
+            alt="Gallery image 16"
+            style={{
+              position: 'absolute',
+              left: '85%',
+              top: '650px',
+              maxWidth: '145px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+          
+          {/* Image 17 - new */}
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769123621/b1e543e658dc5d57345a7ec4809ccf60_w5laic.jpg"
+            alt="Gallery image 17"
+            style={{
+              position: 'absolute',
+              left: '8%',
+              top: '680px',
+              maxWidth: '155px',
+              width: '100%',
+              height: 'auto'
+            }}
+          />
+        </div>
+      </div>
+      
+      {/* Content section - black background */}
+      <div style={{
+        padding: '3rem 2rem',
+        backgroundColor: 'black',
+        position: 'relative'
+      }}>
+        <style>
+          {`
+            .staggered-gallery {
+              max-width: 1200px;
+              margin: 0 auto;
+              padding-bottom: 5rem;
+            }
+            
+            .staggered-item {
+              display: flex;
+              align-items: center;
+              gap: 3rem;
+              margin-bottom: 8rem;
+              position: relative;
+            }
+            
+            .staggered-item.left {
+              flex-direction: row;
+            }
+            
+            .staggered-item.right {
+              flex-direction: row-reverse;
+            }
+            
+            .staggered-image {
+              flex: 0 0 500px;    /* Change this value for image width */
+              max-width: 500px;   /* Change this to match */
+            }
+            
+            .staggered-image img {
+              width: 100%;
+              height: auto;
+              display: block;
+            }
+            
+            .staggered-text {
+              flex: 1;
+              color: white;
+              font-family: monospace;
+              font-size: 1.1rem;
+              line-height: 1.6;
+              letter-spacing: 0.02em;
+            }
+            
+            .staggered-text.left {
+              text-align: left;
+            }
+            
+            .staggered-text.right {
+              text-align: right;
+            }
+            
+            @media (max-width: 768px) {
+              .staggered-item {
+                flex-direction: column !important;
+                gap: 1.5rem;
+                margin-bottom: 5rem;
+              }
+              
+              .staggered-image {
+                flex: 1;
+                max-width: 100%;
+              }
+              
+              .staggered-text {
+                text-align: left !important;
+              }
+            }
+          `}
+        </style>
+        
+        {/* Staggered left-right gallery with text on opposite sides */}
+        <div className="staggered-gallery">
+          {imageTextPairs.map((pair, index) => {
+            const isLeft = index % 2 === 0
+            
+            return (
+              <div 
+                key={index} 
+                className={`staggered-item ${isLeft ? 'left' : 'right'}`}
+              >
+                {/* Image */}
+                <div className="staggered-image">
+                  <img
+                    src={getCloudinaryUrl(pair.imageId)}
+                    alt={`Drawing ${index + 1}`}
+                    loading="lazy"
+                  />
+                </div>
+                
+                {/* Text (if exists) */}
+                {pair.text && (
+                  <div className={`staggered-text ${isLeft ? 'left' : 'right'}`}>
+                    {pair.text}
+                  </div>
+                )}
+                
+                {/* Empty space if no text */}
+                {!pair.text && <div style={{ flex: '1' }} />}
+              </div>
+            )
+          })}
+        </div>
+
+        {/* Mountains image - large separator */}
+        <div style={{
+          width: '100%',
+          marginTop: '8rem',
+          marginBottom: '4rem',
+          position: 'relative'
+        }}>
+          
+          <img 
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769126796/mountains_hxtaj0.png"
+            alt="Mountains"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block'
+            }}
+          />
+           {/* Text above mountains */}
+           <div style={{
+            textAlign: 'center',
+            marginBottom: '2rem'
+          }}>
+            <p style={{
+              fontFamily: 'QuestionFont, serif',
+              fontSize: '7.5rem',
+              color: 'white',
+              margin: 0,
+              letterSpacing: '0.05em'
+            }}>
+              what would happen if god died
+            </p>
+          </div>
+        </div>
+
+        {/* Data display section */}
+        {showData && likertData.length > 0 && (
+          <div style={{
+            maxWidth: '1400px',
+            margin: '3rem auto 0',
+            padding: '2rem',
+            backgroundColor: 'rgba(255, 255, 255, 0.05)',
+            borderRadius: '12px',
+            border: '1px solid rgba(255, 255, 255, 0.1)'
+          }}>
+            <LikertScale data={likertData} />
+          </div>
+        )}
+
+        {/* Navigation controls at bottom */}
+        <div style={{
           display: 'flex',
           alignItems: 'center',
+          justifyContent: 'center',
           gap: '2rem',
-          opacity: showIntro ? 0 : 1,
-          transition: 'opacity 1s ease',
-          pointerEvents: showIntro ? 'none' : 'auto'
+          marginTop: '4rem',
+          paddingBottom: '3rem',
+          flexWrap: 'wrap'
         }}>
           <button
-            onClick={goToPrevPhoto}
+            onClick={() => setShowData(!showData)}
             style={{
               background: 'transparent',
               border: 'none',
               color: 'white',
-              fontSize: '2rem',
+              fontSize: '0.9rem',
               cursor: 'pointer',
               transition: 'opacity 0.3s ease',
-              opacity: 0.7,
+              opacity: showData ? 1 : 0.5,
               padding: 0,
-              outline: 'none'
+              outline: 'none',
+              letterSpacing: '0.05em',
+              fontWeight: showData ? '600' : '400'
             }}
             onMouseEnter={(e) => e.target.style.opacity = '1'}
-            onMouseLeave={(e) => e.target.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.target.style.opacity = showData ? '1' : '0.5'}
           >
-            ←
+            DATA
           </button>
           
-          <button
-            onClick={() => setIsZoomedIn(false)}
-            style={{
-              background: 'transparent',
+          <Link 
+            to="/draw-god" 
+            style={{ 
+              color: 'white', 
+              textDecoration: 'none', 
+              fontSize: '0.9rem',
               border: 'none',
-              color: 'white',
-              fontSize: '1.5rem',
               cursor: 'pointer',
               transition: 'opacity 0.3s ease',
-              opacity: 0.7,
+              opacity: 0.5,
               padding: 0,
-              outline: 'none'
+              outline: 'none',
+              letterSpacing: '0.05em',
+              fontWeight: '400',
+              background: 'transparent'
             }}
             onMouseEnter={(e) => e.target.style.opacity = '1'}
-            onMouseLeave={(e) => e.target.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.target.style.opacity = '0.5'}
           >
-            ✕
-          </button>
+            PLEASE DRAW GOD
+          </Link>
           
-          <button
-            onClick={goToNextPhoto}
-            style={{
-              background: 'transparent',
+          <a 
+            href="/questions-for-god"
+            onClick={handleTransitionToQuestions}
+            style={{ 
+              color: 'white', 
+              textDecoration: 'none', 
+              fontSize: '0.9rem',
               border: 'none',
-              color: 'white',
-              fontSize: '2rem',
               cursor: 'pointer',
               transition: 'opacity 0.3s ease',
-              opacity: 0.7,
+              opacity: 0.5,
               padding: 0,
-              outline: 'none'
+              outline: 'none',
+              letterSpacing: '0.05em',
+              fontWeight: '400',
+              background: 'transparent'
             }}
             onMouseEnter={(e) => e.target.style.opacity = '1'}
-            onMouseLeave={(e) => e.target.style.opacity = '0.7'}
+            onMouseLeave={(e) => e.target.style.opacity = '0.5'}
           >
-            →
-          </button>
+            QUESTIONS FOR GOD
+          </a>
         </div>
-      )}
+      </div>
 
-      {/* Data overlay - show Likert scale data */}
-      {showData && (
-        <div style={{
-          position: 'fixed',
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          zIndex: 20,
-          backgroundColor: 'rgba(0, 0, 0, 0.95)',
-          padding: '3rem',
-          borderRadius: '12px',
-          width: '90vw',
-          maxWidth: '1400px',
-          height: '85vh',
-          overflow: 'hidden',
-          border: '1px solid rgba(255, 255, 255, 0.2)',
-          backdropFilter: 'blur(10px)',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            alignItems: 'center',
-            marginBottom: '1rem'
-          }}>
-            <button
-              onClick={() => setShowData(false)}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                color: 'white',
-                fontSize: '1.5rem',
-                cursor: 'pointer',
-                opacity: 0.7,
-                padding: 0,
-                outline: 'none'
-              }}
-              onMouseEnter={(e) => e.target.style.opacity = '1'}
-              onMouseLeave={(e) => e.target.style.opacity = '0.7'}
-            >
-              ✕
-            </button>
-          </div>
-          
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            {likertData.length > 0 ? (
-              <LikertScale data={likertData} />
-            ) : (
-              <div style={{ 
-                color: 'rgba(255, 255, 255, 0.5)',
-                textAlign: 'center',
-                padding: '2rem',
-                fontSize: '1.1rem'
-              }}>
-                Loading data...
-              </div>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Back button */}
       <Link 
         to="/explore" 
         style={{ 
           position: 'fixed',
-          bottom: '2rem',
+          top: '2rem',
           left: '2rem',
           zIndex: 10,
           color: 'white', 
@@ -700,11 +932,9 @@ function God() {
           border: '1px solid rgba(255,255,255,0.3)',
           padding: '0.6rem 1.2rem',
           borderRadius: '4px',
-          transition: 'all 0.3s ease, opacity 1s ease',
+          transition: 'all 0.3s ease',
           backgroundColor: 'rgba(0,0,0,0.5)',
-          backdropFilter: 'blur(10px)',
-          opacity: showIntro ? 0 : 1,
-          pointerEvents: showIntro ? 'none' : 'auto'
+          backdropFilter: 'blur(10px)'
         }}
         onMouseEnter={(e) => {
           e.target.style.backgroundColor = 'white'

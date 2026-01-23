@@ -9,7 +9,8 @@ function ParticleAura({
   spread = 15,        // How far particles spread
   height = 12,        // Vertical spread
   driftSpeed = 0.3,   // How fast particles drift
-  isTransitioning = false  // Transition animation
+  isTransitioning = false,  // Transition animation
+  scrollSpread = 0    // Scroll-based spreading (0-1)
 }) {
   const points = useRef()
   const transitionStartTime = useRef(null)
@@ -44,25 +45,10 @@ function ParticleAura({
       const orbitRadius = streamRadius
       const orbitSpeed = 0.3 + Math.random() * 0.4
       
-      // Color variation - blue to cyan to white energy
-      const colorVariation = Math.random()
-      let r, g, b
-      if (colorVariation < 0.3) {
-        // Bright cyan-blue
-        r = 0.3 + Math.random() * 0.3
-        g = 0.7 + Math.random() * 0.3
-        b = 1.0
-      } else if (colorVariation < 0.6) {
-        // Bright white-blue
-        r = 0.7 + Math.random() * 0.3
-        g = 0.8 + Math.random() * 0.2
-        b = 1.0
-      } else {
-        // Pure bright white
-        r = 0.9 + Math.random() * 0.1
-        g = 0.9 + Math.random() * 0.1
-        b = 1.0
-      }
+      // Pure white particles
+      const r = 1.0
+      const g = 1.0
+      const b = 1.0
       
       colors[i * 3] = r
       colors[i * 3 + 1] = g
@@ -158,12 +144,21 @@ function ParticleAura({
         const currentRadius = p.orbitRadius * radiusPulse
         
         // Orbiting motion
-        const x = currentRadius * Math.cos(orbitAngle) + Math.sin(flowTime * 1.5) * p.randomOffset
-        const z = currentRadius * Math.sin(orbitAngle) * 0.4 + Math.cos(flowTime * 1.2) * p.randomOffset * 0.3
+        let x = currentRadius * Math.cos(orbitAngle) + Math.sin(flowTime * 1.5) * p.randomOffset
+        let z = currentRadius * Math.sin(orbitAngle) * 0.4 + Math.cos(flowTime * 1.2) * p.randomOffset * 0.3
         
         // Vertical flow with wave motion
         const verticalFlow = Math.sin(flowTime + p.streamIndex) * 2
-        const y = p.heightBase + verticalFlow + Math.cos(flowTime * 0.8) * 1.5
+        let y = p.heightBase + verticalFlow + Math.cos(flowTime * 0.8) * 1.5
+        
+        // Apply scroll-based spreading (more horizontal than vertical)
+        if (scrollSpread > 0) {
+          const horizontalSpreadFactor = scrollSpread * 30 // Stronger horizontal spread for cloud
+          const verticalSpreadFactor = scrollSpread * 8   // Weaker vertical spread
+          x += p.baseX * horizontalSpreadFactor
+          y += p.baseY * verticalSpreadFactor
+          z += p.baseZ * horizontalSpreadFactor
+        }
         
         posArray[i * 3] = x
         posArray[i * 3 + 1] = y
