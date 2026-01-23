@@ -392,24 +392,6 @@ function God() {
         </Suspense>
       </Canvas>
       
-      {/* Title */}
-      <div style={{
-        textAlign: 'center',
-        paddingTop: '3rem',
-        marginBottom: '6rem'
-      }}>
-        <h1 style={{
-          fontFamily: 'GodFont, serif',
-          fontSize: '20rem',
-          color: 'white',
-          margin: 0,
-          letterSpacing: '0.2em',
-          fontWeight: 'normal'
-        }}>
-          GOD
-        </h1>
-      </div>
-      
       {/* Diagram Image */}
       <div style={{
         textAlign: 'center',
@@ -426,6 +408,24 @@ function God() {
             margin: '0 auto'
           }}
         />
+      </div>
+      
+      {/* Title */}
+      <div style={{
+        textAlign: 'center',
+        paddingTop: '3rem',
+        marginBottom: '6rem'
+      }}>
+        <h1 style={{
+          fontFamily: 'GodFont, serif',
+          fontSize: '20rem',
+          color: 'white',
+          margin: 0,
+          letterSpacing: '0.2em',
+          fontWeight: 'normal'
+        }}>
+          GOD
+        </h1>
       </div>
       
       {/* Collage section */}
