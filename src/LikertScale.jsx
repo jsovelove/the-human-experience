@@ -1,12 +1,37 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as d3 from 'd3'
 
 function LikertScale({ data }) {
   const svgRef = useRef()
   const containerRef = useRef()
+  const [isVisible, setIsVisible] = useState(false)
+
+  // Intersection Observer to detect when component is in viewport
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsVisible(true)
+        }
+      },
+      {
+        threshold: 0.2 // Trigger when 20% of component is visible
+      }
+    )
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current)
+    }
+
+    return () => {
+      if (containerRef.current) {
+        observer.unobserve(containerRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
-    if (!data || data.length === 0) return
+    if (!data || data.length === 0 || !isVisible) return
 
     // Clear previous render
     d3.select(svgRef.current).selectAll('*').remove()
@@ -46,6 +71,7 @@ function LikertScale({ data }) {
       .style('padding', '10px')
       .style('border-radius', '8px')
       .style('font-size', '14px')
+      .style('font-family', 'monospace')
       .style('pointer-events', 'none')
       .style('z-index', 1000)
       .style('border', '1px solid rgba(255, 255, 255, 0.3)')
@@ -62,6 +88,7 @@ function LikertScale({ data }) {
         .attr('fill', 'white')
         .attr('font-size', '16px')
         .attr('font-weight', '400')
+        .attr('font-family', 'monospace')
         .text(question.question)
         .call(wrap, chartWidth)
 
@@ -118,6 +145,7 @@ function LikertScale({ data }) {
               .attr('fill', category.value <= 2 ? '#e0e0e0' : '#1a1a1a')
               .attr('font-size', '12px')
               .attr('font-weight', 'bold')
+              .attr('font-family', 'monospace')
               .attr('opacity', 0)
               .text(count)
               .transition()
@@ -138,6 +166,7 @@ function LikertScale({ data }) {
         .attr('fill', 'white')
         .attr('font-size', '18px')
         .attr('font-weight', 'bold')
+        .attr('font-family', 'monospace')
         .attr('opacity', 0)
         .text(`μ: ${question.average}`)
         .transition()
@@ -166,6 +195,7 @@ function LikertScale({ data }) {
         .attr('y', 14)
         .attr('fill', 'white')
         .attr('font-size', '11px')
+        .attr('font-family', 'monospace')
         .text(category.label)
     })
 
@@ -173,7 +203,7 @@ function LikertScale({ data }) {
     return () => {
       tooltip.remove()
     }
-  }, [data])
+  }, [data, isVisible])
 
   // Text wrapping function
   function wrap(text, width) {

@@ -7,6 +7,7 @@ import { EffectComposer, Bloom, Noise, Vignette, ChromaticAberration, DotScreen 
 import ModelParticles from './ModelParticles'
 import ParticleAura from './SpiralEmitter'
 import LikertScale from './LikertScale'
+import CellularAutomataText from './CellularAutomataText'
 import * as THREE from 'three'
 
 // Scene content - just the particle figures and aura
@@ -110,6 +111,74 @@ function God() {
     return `https://res.cloudinary.com/${cloudName}/image/upload/${imageId}.png`
   }
   
+  // Answers about what happens when god dies - handwritten images
+  const godDiesAnswers = [
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192102/1_rhv0re.png",
+      position: { top: '5%', left: '12%', width: '18%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192102/2_up4nq0.png",
+      position: { top: '12%', left: '68%', width: '22%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192103/3_e1szet.png",
+      position: { top: '22%', left: '40%', width: '20%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192103/4_b4xrpk.png",
+      position: { top: '30%', left: '15%', width: '19%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192132/5_tftemg.png",
+      position: { top: '36%', left: '65%', width: '21%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192135/6_dwudlc.png",
+      position: { top: '44%', left: '35%', width: '17%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192135/7_zvxssz.png",
+      position: { top: '50%', left: '8%', width: '20%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192135/8_xuzkjn.png",
+      position: { top: '56%', left: '70%', width: '18%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192136/9_ovifvg.png",
+      position: { top: '62%', left: '45%', width: '19%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192672/10_kei8z3.png",
+      position: { top: '68%', left: '20%', width: '18%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192672/11_eciykq.png",
+      position: { top: '74%', left: '60%', width: '8%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192672/12_i2k3l1.png",
+      position: { top: '80%', left: '38%', width: '19%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192674/13_jte6sr.png",
+      position: { top: '85%', left: '10%', width: '21%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192675/14_d1czkg.png",
+      position: { top: '90%', left: '67%', width: '18%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192675/15_pdcr4l.png",
+      position: { top: '94%', left: '42%', width: '20%' }
+    },
+    {
+      imageUrl: "https://res.cloudinary.com/dgbrj4suu/image/upload/v1769192671/16_xusyqi.png",
+      position: { top: '97%', left: '25%', width: '19%' }
+    }
+  ]
+
   // Image and text pairs - each image has associated text and positioning
   const imageTextPairs = [
     {
@@ -209,7 +278,6 @@ function God() {
     }
   ]
 
-  const [showData, setShowData] = useState(false)
   const [likertData, setLikertData] = useState([])
   const [isTransitioning, setIsTransitioning] = useState(false)
   const [fadeOverlay, setFadeOverlay] = useState(0)
@@ -825,15 +893,20 @@ function God() {
           </div>
         </div>
 
+        {/* Cellular automata with text answers */}
+        <div style={{
+          marginTop: '6rem',
+          marginBottom: '6rem'
+        }}>
+          <CellularAutomataText answers={godDiesAnswers} />
+        </div>
+
         {/* Data display section */}
-        {showData && likertData.length > 0 && (
+        {likertData.length > 0 && (
           <div style={{
             maxWidth: '1400px',
             margin: '3rem auto 0',
-            padding: '2rem',
-            backgroundColor: 'rgba(255, 255, 255, 0.05)',
-            borderRadius: '12px',
-            border: '1px solid rgba(255, 255, 255, 0.1)'
+            padding: '2rem'
           }}>
             <LikertScale data={likertData} />
           </div>
@@ -849,27 +922,6 @@ function God() {
           paddingBottom: '3rem',
           flexWrap: 'wrap'
         }}>
-          <button
-            onClick={() => setShowData(!showData)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: 'white',
-              fontSize: '0.9rem',
-              cursor: 'pointer',
-              transition: 'opacity 0.3s ease',
-              opacity: showData ? 1 : 0.5,
-              padding: 0,
-              outline: 'none',
-              letterSpacing: '0.05em',
-              fontWeight: showData ? '600' : '400'
-            }}
-            onMouseEnter={(e) => e.target.style.opacity = '1'}
-            onMouseLeave={(e) => e.target.style.opacity = showData ? '1' : '0.5'}
-          >
-            DATA
-          </button>
-          
           <Link 
             to="/draw-god" 
             style={{ 
