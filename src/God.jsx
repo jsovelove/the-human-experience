@@ -408,7 +408,7 @@ function God() {
   }, [])  
 
   return (
-    <div ref={scrollContainerRef} className="app" style={{ backgroundColor: 'black', width: '100%', minHeight: '100vh', overflow: 'auto' }}>
+    <div ref={scrollContainerRef} className="app" style={{ backgroundColor: 'black', width: '100%', minHeight: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <style>
         {`
           @font-face {
@@ -419,6 +419,15 @@ function God() {
           @font-face {
             font-family: 'QuestionFont';
             src: url('/fonts/FA_MNGEZKQIKB.ttf') format('truetype');
+          }
+
+          body, html {
+            overflow-x: hidden !important;
+            max-width: 100%;
+          }
+
+          * {
+            box-sizing: border-box;
           }
         `}
       </style>
@@ -912,6 +921,89 @@ function God() {
           </div>
         )}
 
+        {/* Past Lives 4 Image */}
+        <div style={{
+          width: '100%',
+          display: 'flex',
+          justifyContent: 'center',
+          padding: '3rem 2rem',
+          margin: '2rem 0',
+          boxSizing: 'border-box',
+          overflow: 'hidden'
+        }}>
+          <img
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769406130/Past_Lives_4_bhk8tk.png"
+            alt="Past Lives 4"
+            style={{
+              width: '45%',
+              maxWidth: '600px',
+              height: 'auto',
+              display: 'block'
+            }}
+            loading="lazy"
+          />
+        </div>
+
+        {/* Video section */}
+        <div style={{
+          width: '100%',
+          margin: '4rem 0',
+          textAlign: 'center'
+        }}>
+          <video 
+            autoPlay
+            loop
+            muted
+            playsInline
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block'
+            }}
+          >
+            <source src="https://res.cloudinary.com/dgbrj4suu/video/upload/f_auto,q_auto/v1769399884/God_s_Basement_huanvh.mp4" type="video/mp4" />
+            <source src="https://res.cloudinary.com/dgbrj4suu/video/upload/f_webm,q_auto/v1769399884/God_s_Basement_huanvh.webm" type="video/webm" />
+            Your browser does not support the video tag.
+          </video>
+        </div>
+
+        {/* Image link to Questions for God with glow effect */}
+        <div style={{
+          maxWidth: '800px',
+          margin: '4rem auto',
+          textAlign: 'center'
+        }}>
+          <a 
+            href="/questions-for-god"
+            onClick={handleTransitionToQuestions}
+            style={{ 
+              display: 'inline-block',
+              textDecoration: 'none',
+              cursor: 'pointer'
+            }}
+          >
+            <img 
+              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1764462731/Screenshot_2025-11-29_162404_bbba8k.png"
+              alt="Questions for God"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block',
+                transition: 'filter 0.3s ease, transform 0.3s ease',
+                filter: 'brightness(1)'
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.filter = 'brightness(1.3) drop-shadow(0 0 20px rgba(255,255,255,0.8))'
+                e.target.style.transform = 'scale(1.02)'
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.filter = 'brightness(1)'
+                e.target.style.transform = 'scale(1)'
+              }}
+            />
+          </a>
+        </div>
+
         {/* Navigation controls at bottom */}
         <div style={{
           display: 'flex',
@@ -943,29 +1035,6 @@ function God() {
           >
             PLEASE DRAW GOD
           </Link>
-          
-          <a 
-            href="/questions-for-god"
-            onClick={handleTransitionToQuestions}
-            style={{ 
-              color: 'white', 
-              textDecoration: 'none', 
-              fontSize: '0.9rem',
-              border: 'none',
-              cursor: 'pointer',
-              transition: 'opacity 0.3s ease',
-              opacity: 0.5,
-              padding: 0,
-              outline: 'none',
-              letterSpacing: '0.05em',
-              fontWeight: '400',
-              background: 'transparent'
-            }}
-            onMouseEnter={(e) => e.target.style.opacity = '1'}
-            onMouseLeave={(e) => e.target.style.opacity = '0.5'}
-          >
-            QUESTIONS FOR GOD
-          </a>
         </div>
       </div>
 

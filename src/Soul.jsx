@@ -7,12 +7,10 @@ function Soul() {
   useEffect(() => {
     document.body.style.overflowY = 'auto'
     document.body.style.overflowX = 'hidden'
-    document.documentElement.style.overflowY = 'auto'
-    document.documentElement.style.overflowX = 'hidden'
+    document.body.style.height = 'auto'
     const root = document.getElementById('root')
     if (root) {
-      root.style.overflowY = 'auto'
-      root.style.overflowX = 'hidden'
+      root.style.overflow = 'visible'
       root.style.height = 'auto'
     }
     
@@ -22,6 +20,15 @@ function Soul() {
       @font-face {
         font-family: 'SoulFont';
         src: url('/fonts/FA_KVVPUFNXWX.ttf') format('truetype');
+      }
+      
+      body, html {
+        overflow-x: hidden !important;
+        max-width: 100%;
+      }
+
+      * {
+        box-sizing: border-box;
       }
       
       .noise-overlay {
@@ -41,7 +48,7 @@ function Soul() {
     
     return () => {
       document.body.style.overflow = 'hidden'
-      document.documentElement.style.overflow = 'hidden'
+      document.body.style.height = ''
       if (root) {
         root.style.overflow = ''
         root.style.height = ''
@@ -97,7 +104,7 @@ function Soul() {
   return (
     <div style={{ 
       backgroundColor: 'black', 
-      minHeight: '5200px',
+      minHeight: '100vh',
       width: '100%',
       overflowX: 'hidden',
       position: 'relative'
@@ -156,6 +163,119 @@ function Soul() {
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Past Lives Section - separate from scattered images */}
+      <div style={{
+        width: '100%',
+        paddingTop: '3rem',
+        paddingBottom: '3rem',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '2rem'
+      }}>
+        {/* Past Lives Title Image */}
+        <div style={{
+          width: '60%',
+          maxWidth: '800px'
+        }}>
+          <img
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769404831/Past_Lives_qyr4um.png"
+            alt="Past Lives"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block'
+            }}
+            loading="lazy"
+          />
+        </div>
+
+        {/* Past Lives Image 1 */}
+        <div style={{
+          width: '60%',
+          maxWidth: '800px'
+        }}>
+          <img
+            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405868/Past_Lives_1_s0bdi8.png"
+            alt="Past Lives 1"
+            style={{
+              width: '100%',
+              height: 'auto',
+              display: 'block'
+            }}
+            loading="lazy"
+          />
+        </div>
+
+        {/* Past Lives Images 3 and 2 - Side by Side */}
+        <div style={{
+          width: '70%',
+          maxWidth: '900px',
+          display: 'flex',
+          gap: '1.5rem',
+          justifyContent: 'center'
+        }}>
+          <div style={{ flex: 1 }}>
+            <img
+              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405968/Past_Lives_3_iayzuy.png"
+              alt="Past Lives 3"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+              loading="lazy"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <img
+              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405930/Past_Lives_2_dzag5e.png"
+              alt="Past Lives 2"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+              loading="lazy"
+            />
+          </div>
+        </div>
+
+        {/* Images 12 and 13 - Side by Side */}
+        <div style={{
+          width: '70%',
+          maxWidth: '900px',
+          display: 'flex',
+          gap: '1.5rem',
+          justifyContent: 'center'
+        }}>
+          <div style={{ flex: 1 }}>
+            <img
+              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769795840/12_maagy5.png"
+              alt="Past Lives 12"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+              loading="lazy"
+            />
+          </div>
+          <div style={{ flex: 1 }}>
+            <img
+              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769795594/13_vo83au.png"
+              alt="Past Lives 13"
+              style={{
+                width: '100%',
+                height: 'auto',
+                display: 'block'
+              }}
+              loading="lazy"
+            />
+          </div>
+        </div>
       </div>
 
       {/* Back button */}
