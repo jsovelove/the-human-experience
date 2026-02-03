@@ -2,6 +2,8 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import App from './App.jsx'
+import QuestionPage from './QuestionPage.jsx'
+import ResultsPage from './ResultsPage.jsx'
 import SecondPage from './SecondPage.jsx'
 import God from './God.jsx'
 import DrawGod from './DrawGod.jsx'
@@ -18,6 +20,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
+        <Route path="/question" element={<QuestionPage />} />
+        <Route path="/results" element={<ResultsPage />} />
         <Route path="/explore" element={<SecondPage />} />
         <Route path="/god" element={<God />} />
         <Route path="/draw-god" element={<DrawGod />} />

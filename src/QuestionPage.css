@@ -1,0 +1,99 @@
+.question-page {
+  background-color: black;
+  color: white;
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.question-container {
+  text-align: center;
+  max-width: 800px;
+  padding: 2rem;
+}
+
+.question-text {
+  font-size: 2.5rem;
+  margin-bottom: 3rem;
+  font-family: 'Courier New', Courier, monospace;
+  font-weight: normal;
+}
+
+.checkbox-container {
+  display: flex;
+  gap: 4rem;
+  justify-content: center;
+  margin-bottom: 3rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  cursor: pointer;
+  font-size: 1.5rem;
+  font-family: 'Courier New', Courier, monospace;
+  user-select: none;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 24px;
+  height: 24px;
+  cursor: pointer;
+  accent-color: white;
+}
+
+.checkbox-label input[type="checkbox"]:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.checkbox-label span {
+  font-family: 'Courier New', Courier, monospace;
+}
+
+.submit-button {
+  background-color: white;
+  color: black;
+  border: none;
+  padding: 1rem 3rem;
+  font-size: 1.2rem;
+  font-family: 'Courier New', Courier, monospace;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+}
+
+.submit-button:hover:not(:disabled) {
+  background-color: #ddd;
+  transform: scale(1.05);
+}
+
+.submit-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+@media (max-width: 768px) {
+  .question-text {
+    font-size: 1.8rem;
+    margin-bottom: 2rem;
+  }
+
+  .checkbox-container {
+    gap: 2rem;
+  }
+
+  .checkbox-label {
+    font-size: 1.2rem;
+  }
+
+  .submit-button {
+    padding: 0.8rem 2rem;
+    font-size: 1rem;
+  }
+}
+
