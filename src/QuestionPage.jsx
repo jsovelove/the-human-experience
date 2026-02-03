@@ -31,6 +31,10 @@ function QuestionPage() {
     }
   };
 
+  const handleSkip = () => {
+    navigate('/results');
+  };
+
   return (
     <div className="question-page">
       <div className="question-container">
@@ -64,6 +68,14 @@ function QuestionPage() {
           disabled={selectedAnswer === null || isSubmitting}
         >
           {isSubmitting ? 'Submitting...' : 'Submit'}
+        </button>
+
+        <button 
+          className="skip-button"
+          onClick={handleSkip}
+          disabled={isSubmitting}
+        >
+          I've done this before.
         </button>
       </div>
     </div>
