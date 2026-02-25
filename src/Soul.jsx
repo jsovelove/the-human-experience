@@ -23,6 +23,7 @@ const GROUPS = {
   soulDiagram:  { x:    0, y:    0, layers: [1, 2, 3]  }, // centred on viewport
   soulDrawings: { x: -980, y:  890, layers: [3]        }, // screenshot cluster (pan down)
   pastLives:    { x: 3350, y: -190, layers: [4]        }, // far-right foreground
+  foreground:   { x:    0, y:    0, layers: [4]        }, // centred overlay — full drag speed
 }
 
 // ─── Asset manifest ───────────────────────────────────────────────────────────
@@ -116,6 +117,12 @@ const ASSETS = [
   { group: 'pastLives', layer: 4, path: 'v1769405968/Past_Lives_3_iayzuy.png', dx: 1570, dy: -110, targetH: 0.54 },
   { group: 'pastLives', layer: 4, path: 'v1769795840/12_maagy5.png',           dx: 2180, dy:  190, targetH: 0.54 },
   { group: 'pastLives', layer: 4, path: 'v1769795594/13_vo83au.png',           dx: 2480, dy:  190, targetH: 0.54 },
+
+  // ── foreground — Layer 4 (centred overlay, drawn last = on top of everything) ─
+  // PNG with transparent window-pane cutouts — parallax layers show through the glass
+  { group: 'foreground', layer: 4, path: 'v1772041109/a_bb2cri.png',      dx:    0, dy:    0, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772041421/window2_uqqqeu.png', dx: 1599, dy:  880, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772041719/window3_rqju8h.png', dx: -1800, dy:  550, targetH: 1.0 },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
