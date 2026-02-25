@@ -1,42 +1,83 @@
 import './App.css'
 import { Link } from 'react-router-dom'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
+import * as PIXI from 'pixi.js'
 
+// ─── Cloudinary helpers ────────────────────────────────────────────────────────
+const CLOUD = 'https://res.cloudinary.com/dgbrj4suu/image/upload'
+// w_1200 keeps GPU memory reasonable; q_auto/f_auto = smart compression + format
+const imgUrl = (path) => `${CLOUD}/w_1200,q_auto,f_auto/${path}`
+
+// ─── Layer speeds (parallax multipliers) ──────────────────────────────────────
+// 0 = far background (moves barely), 1.0 = foreground (moves at full drag speed)
+const LAYER_SPEEDS  = [0.12, 0.38, 0.70, 1.0]
+const LAYER_ALPHAS  = [0.70, 0.82, 0.92, 0.96]
+
+// ─── Asset manifest ───────────────────────────────────────────────────────────
+// x / y  : world-space offset from viewport centre (px)
+// targetH: target height as fraction of viewport height
+// num    : sequential label number (matching original ordering); omit for Past Lives
+//
+// Original imageIds order  →  num
+//   soul17  01  soul16  02  soul15  03  soul14  04  soul10  05
+//   soul13  06  soul12  07  soul11  08  soul9   09  soul8   10
+//   soul7   11  soul6   12  soul5   13  soul4   14  soul3   15
+//   soul1   16  soul2   17
+const ASSETS = [
+  // ── Layer 0 — deep background (slowest) ─────────────────────────────────────
+  { path: 'soul17_xzycho', layer: 0, x: -2900, y: -320, targetH: 0.27, num:  1 },
+  { path: 'soul5_wyvcjp',  layer: 0, x:  2600, y:  310, targetH: 0.25, num: 13 },
+  { path: 'soul9_rlk43c',  layer: 0, x:  -980, y:  680, targetH: 0.29, num:  9 },
+  { path: 'soul13_vxxlen', layer: 0, x:  3900, y: -450, targetH: 0.27, num:  6 },
+  { path: 'soul1_wjjjri',  layer: 0, x:   820, y: -780, targetH: 0.25, num: 16 },
+
+  // ── Layer 1 — mid background ─────────────────────────────────────────────────
+  { path: 'soul3_ivuzbz',  layer: 1, x:  -780, y:  -60, targetH: 0.34, num: 15 },
+  { path: 'soul6_kqsbzv',  layer: 1, x:  1380, y:  270, targetH: 0.32, num: 12 },
+  { path: 'soul10_zmmhq7', layer: 1, x:  -500, y:  570, targetH: 0.34, num:  5 },
+  { path: 'soul14_sii3a3', layer: 1, x:  2450, y: -160, targetH: 0.31, num:  4 },
+  { path: 'soul2_f7kf9t',  layer: 1, x:   270, y: -480, targetH: 0.34, num: 17 },
+  { path: 'soul8_yqgf3r',  layer: 1, x: -1900, y:  200, targetH: 0.32, num: 10 },
+
+  // ── Layer 2 — mid foreground ─────────────────────────────────────────────────
+  { path: 'soul4_wzzogk',  layer: 2, x:  -340, y:  -35, targetH: 0.41, num: 14 },
+  { path: 'soul7_lqmts9',  layer: 2, x:   880, y:  145, targetH: 0.39, num: 11 },
+  { path: 'soul11_zphb7k', layer: 2, x: -1300, y:  400, targetH: 0.41, num:  8 },
+  { path: 'soul15_whnwwg', layer: 2, x:  1950, y: -125, targetH: 0.39, num:  3 },
+  { path: 'soul12_oif5tw', layer: 2, x:   320, y:  510, targetH: 0.37, num:  7 },
+  { path: 'soul16_krs78i', layer: 2, x:  -840, y: -460, targetH: 0.41, num:  2 },
+
+  // ── Layer 3 — foreground / Past Lives (full speed) ───────────────────────────
+  { path: 'v1769404831/Past_Lives_qyr4um.png',  layer: 3, x:  3350, y: -190, targetH: 0.44 },
+  { path: 'v1769405868/Past_Lives_1_s0bdi8.png', layer: 3, x:  4150, y:   95, targetH: 0.50 },
+  { path: 'v1769405930/Past_Lives_2_dzag5e.png', layer: 3, x:  4920, y:  245, targetH: 0.34 },
+  { path: 'v1769405968/Past_Lives_3_iayzuy.png', layer: 3, x:  4920, y: -300, targetH: 0.34 },
+  { path: 'v1769795840/12_maagy5.png',           layer: 3, x:  5680, y: -195, targetH: 0.37 },
+  { path: 'v1769795594/13_vo83au.png',           layer: 3, x:  5680, y:  295, targetH: 0.37 },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
 function Soul() {
-  // Enable scrolling by overriding body overflow
+  const containerRef = useRef(null)
+
   useEffect(() => {
-    document.body.style.overflowY = 'auto'
-    document.body.style.overflowX = 'hidden'
-    document.body.style.height = 'auto'
-    const root = document.getElementById('root')
-    if (root) {
-      root.style.overflow = 'visible'
-      root.style.height = 'auto'
-    }
-    
-    // Add font-face for custom font and noise texture styles
+    // ── Inject global styles (font + noise) ──────────────────────────────────
     const style = document.createElement('style')
     style.textContent = `
       @font-face {
         font-family: 'SoulFont';
         src: url('/fonts/FA_KVVPUFNXWX.ttf') format('truetype');
       }
-      
       body, html {
-        overflow-x: hidden !important;
-        max-width: 100%;
+        overflow: hidden !important;
+        height: 100vh;
+        width: 100vw;
       }
-
-      * {
-        box-sizing: border-box;
-      }
-      
+      * { box-sizing: border-box; }
       .noise-overlay {
         position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
         pointer-events: none;
         opacity: 0.15;
         z-index: 1000;
@@ -45,258 +86,170 @@ function Soul() {
       }
     `
     document.head.appendChild(style)
-    
-    return () => {
-      document.body.style.overflow = 'hidden'
-      document.body.style.height = ''
-      if (root) {
-        root.style.overflow = ''
-        root.style.height = ''
+    document.body.style.overflow = 'hidden'
+
+    const W = window.innerWidth
+    const H = window.innerHeight
+
+    // ── Pixi application ──────────────────────────────────────────────────────
+    const app = new PIXI.Application({
+      width: W,
+      height: H,
+      backgroundColor: 0x000000,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true,
+      antialias: false, // off for performance with many sprites
+    })
+
+    const el = containerRef.current
+    el.appendChild(app.view)
+    app.view.style.cursor = 'grab'
+    app.view.style.display = 'block'
+
+    // ── Layer containers ──────────────────────────────────────────────────────
+    const layerContainers = LAYER_SPEEDS.map(() => {
+      const c = new PIXI.Container()
+      app.stage.addChild(c)
+      return c
+    })
+
+    // ── Place all sprites ─────────────────────────────────────────────────────
+    ASSETS.forEach((asset) => {
+      const lc = layerContainers[asset.layer]
+      const targetHeightPx = H * asset.targetH
+
+      const sprite = PIXI.Sprite.from(imgUrl(asset.path))
+      sprite.anchor.set(0.5, 0.5)
+      sprite.x = W / 2 + asset.x
+      sprite.y = H / 2 + asset.y
+      sprite.alpha = LAYER_ALPHAS[asset.layer]
+
+      // Resize sprite once its texture is known
+      const setSpriteSize = () => {
+        const tex = sprite.texture
+        if (!tex || tex.height === 0) return
+        sprite.height = targetHeightPx
+        sprite.scale.x = sprite.scale.y // preserve aspect ratio
+
+        // Attach number label after size is resolved
+        if (asset.num !== undefined) {
+          const label = new PIXI.Text(
+            `(${String(asset.num).padStart(2, '0')})`,
+            {
+              fontFamily: 'monospace',
+              fontSize: 11,
+              fill: 0xffffff,
+            }
+          )
+          label.alpha = 0.55
+          label.anchor.set(1, 0)
+          // Position at bottom-right of the sprite (relative to same container)
+          label.x = sprite.x + sprite.width  / 2
+          label.y = sprite.y + sprite.height / 2 + 5
+          lc.addChild(label)
+        }
       }
+
+      if (sprite.texture.baseTexture.valid) {
+        setSpriteSize()
+      } else {
+        sprite.texture.baseTexture.once('loaded', setSpriteSize)
+      }
+
+      lc.addChild(sprite)
+    })
+
+    // ── Drag + inertia ────────────────────────────────────────────────────────
+    let isDragging = false
+    let lastX = 0
+    let lastY = 0
+    let velX  = 0
+    let velY  = 0
+
+    const onPointerDown = (e) => {
+      isDragging = true
+      lastX = e.clientX
+      lastY = e.clientY
+      velX = 0
+      velY = 0
+      app.view.style.cursor = 'grabbing'
+    }
+
+    const onPointerMove = (e) => {
+      if (!isDragging) return
+      const dx = e.clientX - lastX
+      const dy = e.clientY - lastY
+      lastX = e.clientX
+      lastY = e.clientY
+      velX = dx
+      velY = dy
+      layerContainers.forEach((c, i) => {
+        c.x += dx * LAYER_SPEEDS[i]
+        c.y += dy * LAYER_SPEEDS[i]
+      })
+    }
+
+    const onPointerUp = () => {
+      isDragging = false
+      app.view.style.cursor = 'grab'
+    }
+
+    app.view.addEventListener('pointerdown', onPointerDown)
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup',   onPointerUp)
+
+    // Inertia ticker — momentum glide after releasing drag
+    app.ticker.add(() => {
+      if (isDragging) return
+      if (Math.abs(velX) < 0.05 && Math.abs(velY) < 0.05) return
+      velX *= 0.90
+      velY *= 0.90
+      layerContainers.forEach((c, i) => {
+        c.x += velX * LAYER_SPEEDS[i]
+        c.y += velY * LAYER_SPEEDS[i]
+      })
+    })
+
+    // ── Resize handler ────────────────────────────────────────────────────────
+    const onResize = () => {
+      app.renderer.resize(window.innerWidth, window.innerHeight)
+    }
+    window.addEventListener('resize', onResize)
+
+    // ── Cleanup ───────────────────────────────────────────────────────────────
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup',   onPointerUp)
+      window.removeEventListener('resize',      onResize)
       document.head.removeChild(style)
+      document.body.style.overflow = ''
+      app.destroy(true, { children: true, texture: true })
     }
   }, [])
 
-  // Cloudinary image IDs
-  const imageIds = [
-    'soul17_xzycho',
-    'soul16_krs78i',
-    'soul15_whnwwg',
-    'soul14_sii3a3',
-    'soul10_zmmhq7',
-    'soul13_vxxlen',
-    'soul12_oif5tw',
-    'soul11_zphb7k',
-    'soul9_rlk43c',
-    'soul8_yqgf3r',
-    'soul7_lqmts9',
-    'soul6_kqsbzv',
-    'soul5_wyvcjp',
-    'soul4_wzzogk',
-    'soul3_ivuzbz',
-    'soul1_wjjjri',
-    'soul2_f7kf9t'
-  ]
-
-  const cloudinaryBaseUrl = 'https://res.cloudinary.com/dgbrj4suu/image/upload'
-
-  // Scattered positioning for images with fixed pixel values - no overlap
-  const imagePositions = [
-    { top: '150px', left: '5%', width: '22%' },       // 01
-    { top: '100px', left: '60%', width: '25%' },      // 02
-    { top: '600px', left: '30%', width: '28%' },      // 03
-    { top: '550px', left: '8%', width: '20%' },       // 04
-    { top: '1050px', left: '65%', width: '22%' },     // 05
-    { top: '1500px', left: '10%', width: '24%' },     // 06
-    { top: '1450px', left: '50%', width: '22%' },     // 07
-    { top: '1950px', left: '5%', width: '20%' },      // 08
-    { top: '1900px', left: '60%', width: '26%' },     // 09
-    { top: '2400px', left: '35%', width: '24%' },     // 10
-    { top: '2850px', left: '8%', width: '20%' },      // 11
-    { top: '2800px', left: '65%', width: '26%' },     // 12
-    { top: '3300px', left: '30%', width: '22%' },     // 13
-    { top: '3750px', left: '10%', width: '25%' },     // 14
-    { top: '3700px', left: '60%', width: '24%' },     // 15
-    { top: '4200px', left: '5%', width: '28%' },      // 16
-    { top: '4650px', left: '50%', width: '26%' }      // 17
-  ]
-
   return (
-    <div style={{ 
-      backgroundColor: 'black', 
-      minHeight: '100vh',
-      width: '100%',
-      overflowX: 'hidden',
-      position: 'relative'
-    }}>
-      {/* Noise/Paper Texture Overlay */}
-      <div className="noise-overlay"></div>
-      
-      {/* Title */}
-      <h1 style={{
-        fontFamily: 'SoulFont, serif',
-        fontSize: '12rem',
-        color: 'white',
-        textAlign: 'center',
-        padding: '1rem 0 0 0',
-        margin: 0,
-        fontWeight: 'normal',
-        lineHeight: '0.9'
-      }}>
-        soul
-      </h1>
-
-      {/* Scattered images with numbering */}
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        minHeight: '5000px',
-        paddingBottom: '5rem'
-      }}>
-        {imageIds.map((imageId, index) => (
-          <div
-            key={imageId}
-            style={{
-              position: 'absolute',
-              ...imagePositions[index]
-            }}
-          >
-            <img
-              src={`${cloudinaryBaseUrl}/${imageId}`}
-              alt={`Soul ${index + 1}`}
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block'
-              }}
-              loading="lazy"
-            />
-            {/* Numbering below image */}
-            <div style={{
-              fontSize: '0.75rem',
-              color: 'white',
-              fontFamily: 'monospace',
-              marginTop: '0.5rem',
-              textAlign: 'right'
-            }}>
-              ({String(index + 1).padStart(2, '0')})
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Past Lives Section - separate from scattered images */}
-      <div style={{
-        width: '100%',
-        paddingTop: '3rem',
-        paddingBottom: '3rem',
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '2rem'
-      }}>
-        {/* Past Lives Title Image */}
-        <div style={{
-          width: '60%',
-          maxWidth: '800px'
-        }}>
-          <img
-            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769404831/Past_Lives_qyr4um.png"
-            alt="Past Lives"
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block'
-            }}
-            loading="lazy"
-          />
-        </div>
-
-        {/* Past Lives Image 1 */}
-        <div style={{
-          width: '60%',
-          maxWidth: '800px'
-        }}>
-          <img
-            src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405868/Past_Lives_1_s0bdi8.png"
-            alt="Past Lives 1"
-            style={{
-              width: '100%',
-              height: 'auto',
-              display: 'block'
-            }}
-            loading="lazy"
-          />
-        </div>
-
-        {/* Past Lives Images 3 and 2 - Side by Side */}
-        <div style={{
-          width: '70%',
-          maxWidth: '900px',
-          display: 'flex',
-          gap: '1.5rem',
-          justifyContent: 'center'
-        }}>
-          <div style={{ flex: 1 }}>
-            <img
-              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405968/Past_Lives_3_iayzuy.png"
-              alt="Past Lives 3"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block'
-              }}
-              loading="lazy"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <img
-              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769405930/Past_Lives_2_dzag5e.png"
-              alt="Past Lives 2"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block'
-              }}
-              loading="lazy"
-            />
-          </div>
-        </div>
-
-        {/* Images 12 and 13 - Side by Side */}
-        <div style={{
-          width: '70%',
-          maxWidth: '900px',
-          display: 'flex',
-          gap: '1.5rem',
-          justifyContent: 'center'
-        }}>
-          <div style={{ flex: 1 }}>
-            <img
-              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769795840/12_maagy5.png"
-              alt="Past Lives 12"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block'
-              }}
-              loading="lazy"
-            />
-          </div>
-          <div style={{ flex: 1 }}>
-            <img
-              src="https://res.cloudinary.com/dgbrj4suu/image/upload/v1769795594/13_vo83au.png"
-              alt="Past Lives 13"
-              style={{
-                width: '100%',
-                height: 'auto',
-                display: 'block'
-              }}
-              loading="lazy"
-            />
-          </div>
-        </div>
-      </div>
+    <>
+      {/* Noise / paper texture */}
+      <div className="noise-overlay" />
 
       {/* Back button */}
-      <Link 
-        to="/explore" 
-        style={{ 
+      <Link
+        to="/explore"
+        style={{
           position: 'fixed',
-          bottom: '2rem',
-          left: '2rem',
-          zIndex: 10,
-          color: 'white', 
-          textDecoration: 'none', 
+          top: '2rem',
+          right: '2rem',
+          zIndex: 1100,
+          color: 'white',
+          textDecoration: 'none',
           fontSize: '1rem',
           border: '1px solid rgba(255,255,255,0.5)',
           padding: '0.8rem 1.6rem',
           borderRadius: '4px',
-          display: 'inline-block',
           transition: 'all 0.3s ease',
           backgroundColor: 'rgba(0,0,0,0.7)',
           backdropFilter: 'blur(10px)',
-          textShadow: '0 0 10px rgba(0,0,0,0.8)'
+          textShadow: '0 0 10px rgba(0,0,0,0.8)',
         }}
         onMouseEnter={(e) => {
           e.target.style.backgroundColor = 'white'
@@ -309,9 +262,33 @@ function Soul() {
       >
         ← Back to Diagram
       </Link>
-    </div>
+
+      {/* Drag hint */}
+      <div
+        style={{
+          position: 'fixed',
+          bottom: '2rem',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          color: 'rgba(255,255,255,0.35)',
+          fontFamily: 'monospace',
+          fontSize: '0.72rem',
+          letterSpacing: '0.12em',
+          zIndex: 1100,
+          pointerEvents: 'none',
+          userSelect: 'none',
+        }}
+      >
+        drag to explore
+      </div>
+
+      {/* Pixi canvas mount point */}
+      <div
+        ref={containerRef}
+        style={{ width: '100vw', height: '100vh', overflow: 'hidden' }}
+      />
+    </>
   )
 }
 
 export default Soul
-

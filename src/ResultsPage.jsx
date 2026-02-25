@@ -78,7 +78,10 @@ function ResultsPage() {
         </p>
 
         <div className="chart-container">
-          <ResponsiveContainer width="100%" height={400}>
+          <ResponsiveContainer 
+            width="100%" 
+            height={window.innerWidth <= 480 ? 300 : window.innerWidth <= 768 ? 350 : 400}
+          >
             <PieChart>
               <Pie
                 data={data}
@@ -88,7 +91,7 @@ function ResultsPage() {
                 label={({ name, percent }) => 
                   `${name}: ${(percent * 100).toFixed(0)}%`
                 }
-                outerRadius={120}
+                outerRadius={window.innerWidth <= 480 ? 80 : window.innerWidth <= 768 ? 100 : 120}
                 fill="#8884d8"
                 dataKey="value"
               >

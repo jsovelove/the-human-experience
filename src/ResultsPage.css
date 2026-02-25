@@ -4,15 +4,18 @@
   min-height: 100vh;
   display: flex;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   font-family: 'Courier New', Courier, monospace;
   padding: 2rem;
+  overflow-y: auto;
 }
 
 .results-container {
   text-align: center;
   max-width: 900px;
   width: 100%;
+  padding-bottom: 3rem;
+  margin-top: 2rem;
 }
 
 .results-title {
@@ -77,6 +80,10 @@
 }
 
 @media (max-width: 768px) {
+  .results-page {
+    padding: 1rem;
+  }
+
   .results-title {
     font-size: 1.5rem;
   }
@@ -92,6 +99,32 @@
   .continue-button {
     padding: 0.8rem 2rem;
     font-size: 1rem;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .results-page {
+    padding: 1rem 0.5rem;
+  }
+
+  .results-title {
+    font-size: 1.2rem;
+  }
+
+  .results-subtitle {
+    font-size: 0.9rem;
+  }
+
+  .chart-container {
+    margin: 1.5rem auto;
+  }
+
+  .continue-button {
+    padding: 0.7rem 1.5rem;
+    font-size: 0.9rem;
+    margin-bottom: 2rem;
   }
 }
 

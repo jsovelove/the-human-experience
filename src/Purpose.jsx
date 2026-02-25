@@ -16,7 +16,7 @@ function Purpose() {
         margin: '0 auto'
       }}>
         <div style={{ textAlign: 'center', color: 'white' }}>
-          <h1 style={{ fontSize: '4rem', marginBottom: '3rem' }}>PURPOSE</h1>
+          
           
           {/* First Image */}
           <div style={{ marginBottom: '3rem' }}>
