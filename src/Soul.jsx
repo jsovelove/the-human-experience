@@ -162,6 +162,9 @@ function Soul() {
 
     const W = window.innerWidth
     const H = window.innerHeight
+    // posScale keeps layout density consistent across screen sizes.
+    // All dx/dy offsets were designed at 1080px height — scale them proportionally.
+    const posScale = H / 1080
 
     // ── Pixi application ──────────────────────────────────────────────────────
     const app = new PIXI.Application({
@@ -194,8 +197,8 @@ function Soul() {
       groupContainers[name] = {}
       g.layers.forEach((li) => {
         const gc = new PIXI.Container()
-        gc.x = W / 2 + g.x
-        gc.y = H / 2 + g.y
+        gc.x = W / 2 + g.x * posScale
+        gc.y = H / 2 + g.y * posScale
         layerContainers[li].addChild(gc)
         groupContainers[name][li] = gc
       })
@@ -208,8 +211,8 @@ function Soul() {
 
       const sprite = PIXI.Sprite.from(imgUrl(asset.path))
       sprite.anchor.set(0.5, 0.5)
-      sprite.x = asset.dx   // relative to the group sub-container
-      sprite.y = asset.dy
+      sprite.x = asset.dx * posScale   // relative to the group sub-container
+      sprite.y = asset.dy * posScale
       sprite.alpha = LAYER_ALPHAS[asset.layer]
 
       // Resize sprite once its texture is known
