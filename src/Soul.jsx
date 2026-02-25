@@ -10,13 +10,26 @@ const imgUrl = (path) => `${CLOUD}/w_1200,q_auto,f_auto/${path}`
 
 // ─── Layer speeds (parallax multipliers) ──────────────────────────────────────
 // 0 = far background (moves barely), 1.0 = foreground (moves at full drag speed)
-const LAYER_SPEEDS  = [0.12, 0.38, 0.70, 1.0]
-const LAYER_ALPHAS  = [0.70, 0.82, 0.92, 0.96]
+const LAYER_SPEEDS  = [0.05, 0.12, 0.38, 0.70, 1.0]
+const LAYER_ALPHAS  = [0.45, 0.70, 0.82, 0.92, 0.96]
+
+// ─── Groups ───────────────────────────────────────────────────────────────────
+// x / y   : world-space anchor of the group (offset from viewport centre, px)
+// layers  : which parallax layers this group uses
+//
+// To reposition an entire group, change x / y here — all member assets move together.
+const GROUPS = {
+  background:   { x:    0, y:    0, layers: [0]        }, // deepest layer — barely moves
+  soulDiagram:  { x:    0, y:    0, layers: [1, 2, 3]  }, // centred on viewport
+  soulDrawings: { x: -980, y:  890, layers: [3]        }, // screenshot cluster (pan down)
+  pastLives:    { x: 3350, y: -190, layers: [4]        }, // far-right foreground
+}
 
 // ─── Asset manifest ───────────────────────────────────────────────────────────
-// x / y  : world-space offset from viewport centre (px)
+// group  : key into GROUPS — sets which sub-container this sprite lives in
+// dx / dy: offset from the group anchor (px)
 // targetH: target height as fraction of viewport height
-// num    : sequential label number (matching original ordering); omit for Past Lives
+// num    : sequential label number; omit to skip label
 //
 // Original imageIds order  →  num
 //   soul17  01  soul16  02  soul15  03  soul14  04  soul10  05
@@ -24,55 +37,85 @@ const LAYER_ALPHAS  = [0.70, 0.82, 0.92, 0.96]
 //   soul7   11  soul6   12  soul5   13  soul4   14  soul3   15
 //   soul1   16  soul2   17
 const ASSETS = [
-  // ── Layer 0 — deep background (slowest) ─────────────────────────────────────
-  { path: 'soul17_xzycho', layer: 0, x: -2900, y: -320, targetH: 0.27, num:  1 },
-  { path: 'soul5_wyvcjp',  layer: 0, x:  2600, y:  310, targetH: 0.25, num: 13 },
-  { path: 'soul9_rlk43c',  layer: 0, x:  -980, y:  680, targetH: 0.29, num:  9 },
-  { path: 'soul13_vxxlen', layer: 0, x:  3900, y: -450, targetH: 0.27, num:  6 },
-  { path: 'soul1_wjjjri',  layer: 0, x:   820, y: -780, targetH: 0.25, num: 16 },
+  // ── background — Layer 0 (deepest, speed 0.05 — barely drifts) ───────────────
+  // Brick layout — 3 rows, rows 1 & 3 have 4 images, row 2 has 3 images staggered
+  // by half a column width (275px) so every image fills the gap in the row above/below.
+  // targetH 0.65 + 550px spacing = ~35px bleed on all sides → no visible gaps.
+  //
+  //  Row 1 (dy -560):  [  ]  [  ]  [  ]  [  ]
+  //  Row 2 (dy    0):    [  ]  [  ]  [  ]       ← offset 275px right
+  //  Row 3 (dy +560):  [  ]  [  ]  [  ]  [  ]
+  { group: 'background', layer: 0, path: 'v1772036438/9cd0390853ca36d1286cc4967ee05a41_sutwjd.jpg', dx: -825, dy: -560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036438/3b42cd9d826e3ecfc9389c2dd9cf6f9d_dz2pyn.jpg', dx: -275, dy: -560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/51b2a05f1f11115489e144a931d5caf1_ozlpew.jpg', dx:  275, dy: -560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036438/4defa773ed471aca4d2a3945f63bfdd9_c8ztdl.jpg', dx:  825, dy: -560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/5225d159a639eb7f2773a53ab8473d22_zwyc6g.jpg', dx: -550, dy:    0, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/b42ec538689019b9d07c430d17e6c3ea_zz2hsw.jpg', dx:    0, dy:    0, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/079859c663b1d61648ce619c3daeba6e_lx0ryt.jpg', dx:  550, dy:    0, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/5ad4c0c3e5a177f3a98482cae8c83b31_hoea6e.jpg', dx: -825, dy:  560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/00305d0250d13cb9381d027a36cd3f5f_oe86qj.jpg', dx: -275, dy:  560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036440/479364c91549c324e403049852c412e4_ku5xiv.jpg', dx:  275, dy:  560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036574/a2e78f2637b50f35aed85951450d939f_tz2vwi.jpg', dx:  825, dy:  560, targetH: 0.65 },
 
-  // ── Layer 1 — mid background ─────────────────────────────────────────────────
-  { path: 'soul3_ivuzbz',  layer: 1, x:  -780, y:  -60, targetH: 0.34, num: 15 },
-  { path: 'soul6_kqsbzv',  layer: 1, x:  1380, y:  270, targetH: 0.32, num: 12 },
-  { path: 'soul10_zmmhq7', layer: 1, x:  -500, y:  570, targetH: 0.34, num:  5 },
-  { path: 'soul14_sii3a3', layer: 1, x:  2450, y: -160, targetH: 0.31, num:  4 },
-  { path: 'soul2_f7kf9t',  layer: 1, x:   270, y: -480, targetH: 0.34, num: 17 },
-  { path: 'soul8_yqgf3r',  layer: 1, x: -1900, y:  200, targetH: 0.32, num: 10 },
+  // Smaller accent images — rendered after the base grid so they sit on top,
+  // intentionally overlapping the larger tiles beneath them (targetH ~0.37)
+  { group: 'background', layer: 0, path: 'v1772037635/82382fae84cdc95bf4d57241f0e4adfd_mgjti2.jpg', dx: -650, dy: -280, targetH: 0.37 },
+  { group: 'background', layer: 0, path: 'v1772037635/5dcf75ad9e2b8feeb22dec07f0adafaf_tmxeqc.jpg', dx:  150, dy: -380, targetH: 0.37 },
+  { group: 'background', layer: 0, path: 'v1772037635/2b05ebea87c2397ac6bdb8fb8b171f13_i3avqj.jpg', dx:  680, dy:  180, targetH: 0.37 },
+  { group: 'background', layer: 0, path: 'v1772037634/9339046ee36f6c8d7b01ff56bdcee231_ysvkfc.jpg', dx: -180, dy:  400, targetH: 0.37 },
+  { group: 'background', layer: 0, path: 'v1772037635/498f79902d0503c09bb35655f1858f91_szli5o.jpg', dx: -620, dy:  200, targetH: 0.37 },
 
-  // ── Layer 2 — mid foreground ─────────────────────────────────────────────────
-  { path: 'soul4_wzzogk',  layer: 2, x:  -340, y:  -35, targetH: 0.41, num: 14 },
-  { path: 'soul7_lqmts9',  layer: 2, x:   880, y:  145, targetH: 0.39, num: 11 },
-  { path: 'soul11_zphb7k', layer: 2, x: -1300, y:  400, targetH: 0.41, num:  8 },
-  { path: 'soul15_whnwwg', layer: 2, x:  1950, y: -125, targetH: 0.39, num:  3 },
-  { path: 'soul12_oif5tw', layer: 2, x:   320, y:  510, targetH: 0.37, num:  7 },
-  { path: 'soul16_krs78i', layer: 2, x:  -840, y: -460, targetH: 0.41, num:  2 },
-  { path: 'v1771994908/IMG_5121_frgxw0.jpg',               layer: 2, x:  1220, y: -580, targetH: 0.44 },
+  // ── soulDiagram — Layer 1 (slow background) ──────────────────────────────────
+  { group: 'soulDiagram', layer: 1, path: 'soul17_xzycho', dx: -2900, dy: -320, targetH: 0.27, num:  1 },
+  { group: 'soulDiagram', layer: 1, path: 'soul5_wyvcjp',  dx:  2600, dy:  310, targetH: 0.25, num: 13 },
+  { group: 'soulDiagram', layer: 1, path: 'soul9_rlk43c',  dx:  -980, dy:  680, targetH: 0.29, num:  9 },
+  { group: 'soulDiagram', layer: 1, path: 'soul13_vxxlen', dx:  3900, dy: -450, targetH: 0.27, num:  6 },
+  { group: 'soulDiagram', layer: 1, path: 'soul1_wjjjri',  dx:   820, dy: -780, targetH: 0.25, num: 16 },
 
-  // ── Layer 2 — screenshot cluster (pan down to discover) ──────────────────────
-  // All on the same layer so they stay together as a group
-  { path: 'v1771996789/Screenshot_2026-02-24_205925_b4jzml.png', layer: 2, x:  -980, y:  890, targetH: 0.33 },
-  { path: 'v1771996790/Screenshot_2026-02-24_210041_oppyct.png', layer: 2, x:  -320, y:  920, targetH: 0.33 },
-  { path: 'v1771996790/Screenshot_2026-02-24_210232_oz4lum.png', layer: 2, x:   340, y:  880, targetH: 0.33 },
-  { path: 'v1771996790/Screenshot_2026-02-24_210310_higf9w.png', layer: 2, x:  1000, y:  910, targetH: 0.33 },
-  { path: 'v1771996792/Screenshot_2026-02-24_210337_pzdock.png', layer: 2, x: -1050, y: 1520, targetH: 0.33 },
-  { path: 'v1771996792/Screenshot_2026-02-24_210418_xzgcsb.png', layer: 2, x:  -360, y: 1550, targetH: 0.33 },
-  { path: 'v1771996793/Screenshot_2026-02-24_210456_s6uabb.png', layer: 2, x:   320, y: 1510, targetH: 0.33 },
-  { path: 'v1771996794/Screenshot_2026-02-24_210525_kfcz9p.png', layer: 2, x:   990, y: 1540, targetH: 0.33 },
-  { path: 'v1771996794/Screenshot_2026-02-24_210608_ovjgdh.png', layer: 2, x:  -990, y: 2160, targetH: 0.33 },
-  { path: 'v1771996796/Screenshot_2026-02-24_210913_nxuykr.png', layer: 2, x:  -320, y: 2190, targetH: 0.33 },
-  { path: 'v1771996797/Screenshot_2026-02-24_210934_zbkred.png', layer: 2, x:   360, y: 2150, targetH: 0.33 },
-  { path: 'v1771996797/Screenshot_2026-02-24_211021_mlscrk.png', layer: 2, x:  1010, y: 2180, targetH: 0.33 },
-  { path: 'v1771996799/Screenshot_2026-02-24_211104_npbvoh.png', layer: 2, x:  -660, y: 2790, targetH: 0.33 },
-  { path: 'v1771996800/Screenshot_2026-02-24_211219_s2wnk7.png', layer: 2, x:    20, y: 2820, targetH: 0.33 },
-  { path: 'v1771996801/Screenshot_2026-02-24_211833_io0tas.png', layer: 2, x:   680, y: 2800, targetH: 0.33 },
+  // ── soulDiagram — Layer 2 (mid background) ───────────────────────────────────
+  { group: 'soulDiagram', layer: 2, path: 'soul3_ivuzbz',  dx:  -780, dy:  -60, targetH: 0.34, num: 15 },
+  { group: 'soulDiagram', layer: 2, path: 'soul6_kqsbzv',  dx:  1380, dy:  270, targetH: 0.32, num: 12 },
+  { group: 'soulDiagram', layer: 2, path: 'soul10_zmmhq7', dx:  -500, dy:  570, targetH: 0.34, num:  5 },
+  { group: 'soulDiagram', layer: 2, path: 'soul14_sii3a3', dx:  2450, dy: -160, targetH: 0.31, num:  4 },
+  { group: 'soulDiagram', layer: 2, path: 'soul2_f7kf9t',  dx:   270, dy: -480, targetH: 0.34, num: 17 },
+  { group: 'soulDiagram', layer: 2, path: 'soul8_yqgf3r',  dx: -1900, dy:  200, targetH: 0.32, num: 10 },
 
-  // ── Layer 3 — foreground / Past Lives (full speed) ───────────────────────────
-  { path: 'v1769404831/Past_Lives_qyr4um.png',  layer: 3, x:  3350, y: -190, targetH: 0.44 },
-  { path: 'v1769405868/Past_Lives_1_s0bdi8.png', layer: 3, x:  4150, y:   95, targetH: 0.50 },
-  { path: 'v1769405930/Past_Lives_2_dzag5e.png', layer: 3, x:  4920, y:  245, targetH: 0.54 },
-  { path: 'v1769405968/Past_Lives_3_iayzuy.png', layer: 3, x:  4920, y: -300, targetH: 0.54 },
-  { path: 'v1769795840/12_maagy5.png',           layer: 3, x:  5530, y:    0, targetH: 0.54 },
-  { path: 'v1769795594/13_vo83au.png',           layer: 3, x:  5830, y:    0, targetH: 0.54 },
+  // ── soulDiagram — Layer 3 (mid foreground) ───────────────────────────────────
+  { group: 'soulDiagram', layer: 3, path: 'soul4_wzzogk',  dx:  -340, dy:  -35, targetH: 0.41, num: 14 },
+  { group: 'soulDiagram', layer: 3, path: 'soul7_lqmts9',  dx:   880, dy:  145, targetH: 0.39, num: 11 },
+  { group: 'soulDiagram', layer: 3, path: 'soul11_zphb7k', dx: -1300, dy:  400, targetH: 0.41, num:  8 },
+  { group: 'soulDiagram', layer: 3, path: 'soul15_whnwwg', dx:  1950, dy: -125, targetH: 0.39, num:  3 },
+  { group: 'soulDiagram', layer: 3, path: 'soul12_oif5tw', dx:   320, dy:  510, targetH: 0.37, num:  7 },
+  { group: 'soulDiagram', layer: 3, path: 'soul16_krs78i', dx:  -840, dy: -460, targetH: 0.41, num:  2 },
+  { group: 'soulDiagram', layer: 3, path: 'v1771994908/IMG_5121_frgxw0.jpg', dx: 1220, dy: -580, targetH: 0.44 },
+
+  // ── soulDrawings — Layer 3 (screenshot cluster, pan down to discover) ────────
+  // dx / dy are relative to the soulDrawings anchor (-980, 890)
+  // Layout is intentionally loose — column widths, row heights, and sizes all vary
+  { group: 'soulDrawings', layer: 3, path: 'v1771996789/Screenshot_2026-02-24_205925_b4jzml.png', dx:    0, dy:    0, targetH: 0.32 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996790/Screenshot_2026-02-24_210041_oppyct.png', dx:  720, dy:  100, targetH: 0.34 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996790/Screenshot_2026-02-24_210232_oz4lum.png', dx: 1550, dy:  -40, targetH: 0.30 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996790/Screenshot_2026-02-24_210310_higf9w.png', dx: 2300, dy:   70, targetH: 0.33 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996792/Screenshot_2026-02-24_210337_pzdock.png', dx: -250, dy:  650, targetH: 0.35 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996792/Screenshot_2026-02-24_210418_xzgcsb.png', dx:  490, dy:  580, targetH: 0.29 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996793/Screenshot_2026-02-24_210456_s6uabb.png', dx: 1260, dy:  740, targetH: 0.34 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996794/Screenshot_2026-02-24_210525_kfcz9p.png', dx: 2050, dy:  660, targetH: 0.31 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996794/Screenshot_2026-02-24_210608_ovjgdh.png', dx:   80, dy: 1290, targetH: 0.30 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996796/Screenshot_2026-02-24_210913_nxuykr.png', dx:  850, dy: 1380, targetH: 0.36 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996797/Screenshot_2026-02-24_210934_zbkred.png', dx: 1680, dy: 1240, targetH: 0.31 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996797/Screenshot_2026-02-24_211021_mlscrk.png', dx: 2420, dy: 1360, targetH: 0.33 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996799/Screenshot_2026-02-24_211104_npbvoh.png', dx:  -90, dy: 1960, targetH: 0.33 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996800/Screenshot_2026-02-24_211219_s2wnk7.png', dx:  700, dy: 2040, targetH: 0.30 },
+  { group: 'soulDrawings', layer: 3, path: 'v1771996801/Screenshot_2026-02-24_211833_io0tas.png', dx: 1500, dy: 1880, targetH: 0.34 },
+
+  // ── pastLives — Layer 4 (foreground, full speed) ──────────────────────────────
+  // dx / dy are relative to the pastLives anchor (3350, -190)
+  { group: 'pastLives', layer: 4, path: 'v1769404831/Past_Lives_qyr4um.png',   dx:    0, dy:    0, targetH: 0.44 },
+  { group: 'pastLives', layer: 4, path: 'v1769405868/Past_Lives_1_s0bdi8.png', dx:  800, dy:  285, targetH: 0.50 },
+  { group: 'pastLives', layer: 4, path: 'v1769405930/Past_Lives_2_dzag5e.png', dx: 1570, dy:  435, targetH: 0.54 },
+  { group: 'pastLives', layer: 4, path: 'v1769405968/Past_Lives_3_iayzuy.png', dx: 1570, dy: -110, targetH: 0.54 },
+  { group: 'pastLives', layer: 4, path: 'v1769795840/12_maagy5.png',           dx: 2180, dy:  190, targetH: 0.54 },
+  { group: 'pastLives', layer: 4, path: 'v1769795594/13_vo83au.png',           dx: 2480, dy:  190, targetH: 0.54 },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -132,15 +175,31 @@ function Soul() {
       return c
     })
 
+    // ── Group sub-containers ──────────────────────────────────────────────────
+    // groupContainers[groupName][layerIndex] = PIXI.Container
+    // Each sub-container is positioned at its group's world-space anchor.
+    // To reposition a group at runtime: groupContainers.soulDrawings[2].x += 100
+    const groupContainers = {}
+    Object.entries(GROUPS).forEach(([name, g]) => {
+      groupContainers[name] = {}
+      g.layers.forEach((li) => {
+        const gc = new PIXI.Container()
+        gc.x = W / 2 + g.x
+        gc.y = H / 2 + g.y
+        layerContainers[li].addChild(gc)
+        groupContainers[name][li] = gc
+      })
+    })
+
     // ── Place all sprites ─────────────────────────────────────────────────────
     ASSETS.forEach((asset) => {
-      const lc = layerContainers[asset.layer]
+      const gc = groupContainers[asset.group][asset.layer]
       const targetHeightPx = H * asset.targetH
 
       const sprite = PIXI.Sprite.from(imgUrl(asset.path))
       sprite.anchor.set(0.5, 0.5)
-      sprite.x = W / 2 + asset.x
-      sprite.y = H / 2 + asset.y
+      sprite.x = asset.dx   // relative to the group sub-container
+      sprite.y = asset.dy
       sprite.alpha = LAYER_ALPHAS[asset.layer]
 
       // Resize sprite once its texture is known
@@ -162,10 +221,10 @@ function Soul() {
           )
           label.alpha = 0.55
           label.anchor.set(1, 0)
-          // Position at bottom-right of the sprite (relative to same container)
+          // Position at bottom-right of the sprite (relative to group container)
           label.x = sprite.x + sprite.width  / 2
           label.y = sprite.y + sprite.height / 2 + 5
-          lc.addChild(label)
+          gc.addChild(label)
         }
       }
 
@@ -175,7 +234,7 @@ function Soul() {
         sprite.texture.baseTexture.once('loaded', setSpriteSize)
       }
 
-      lc.addChild(sprite)
+      gc.addChild(sprite)
     })
 
     // ── Drag + inertia ────────────────────────────────────────────────────────
