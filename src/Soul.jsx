@@ -22,7 +22,7 @@ const GROUPS = {
   background:   { x:    0, y:    0, layers: [0]        }, // deepest layer — barely moves
   soulDiagram:  { x:    0, y:    0, layers: [1, 2, 3]  }, // centred on viewport
   soulDrawings: { x: -980, y:  890, layers: [3]        }, // screenshot cluster (pan down)
-  pastLives:    { x: 3350, y: -190, layers: [4]        }, // far-right foreground
+  pastLives:    { x: 3350, y: 2810, layers: [4]        }, // far-right foreground
   foreground:   { x:    0, y:    0, layers: [4]        }, // centred overlay — full drag speed
 }
 
@@ -60,6 +60,7 @@ const ASSETS = [
 
   // Smaller accent images — rendered after the base grid so they sit on top,
   // intentionally overlapping the larger tiles beneath them (targetH ~0.37)
+  { group: 'background', layer: 0, path: 'v1769406130/Past_Lives_4_bhk8tk.png',                     dx:  450, dy:  120, targetH: 0.52 },
   { group: 'background', layer: 0, path: 'v1772037635/82382fae84cdc95bf4d57241f0e4adfd_mgjti2.jpg', dx: -650, dy: -280, targetH: 0.37 },
   { group: 'background', layer: 0, path: 'v1772037635/5dcf75ad9e2b8feeb22dec07f0adafaf_tmxeqc.jpg', dx:  150, dy: -380, targetH: 0.37 },
   { group: 'background', layer: 0, path: 'v1772037635/2b05ebea87c2397ac6bdb8fb8b171f13_i3avqj.jpg', dx:  680, dy:  180, targetH: 0.37 },
@@ -112,7 +113,7 @@ const ASSETS = [
 
   // ── pastLives — Layer 4 (foreground, full speed) ──────────────────────────────
   // dx / dy are relative to the pastLives anchor (3350, -190)
-  { group: 'pastLives', layer: 4, path: 'v1769404831/Past_Lives_qyr4um.png',   dx:    0, dy:    0, targetH: 0.44 },
+  { group: 'pastLives', layer: 4, path: 'v1772058131/Past_Lives_qyr4um_qwquez.png',   dx:    0, dy:    0, targetH: 0.44 },
   { group: 'pastLives', layer: 4, path: 'v1769405868/Past_Lives_1_s0bdi8.png', dx:  800, dy:  285, targetH: 0.50 },
   { group: 'pastLives', layer: 4, path: 'v1769405930/Past_Lives_2_dzag5e.png', dx: 1570, dy:  435, targetH: 0.54 },
   { group: 'pastLives', layer: 4, path: 'v1769405968/Past_Lives_3_iayzuy.png', dx: 1570, dy: -110, targetH: 0.54 },
@@ -127,6 +128,7 @@ const ASSETS = [
   { group: 'foreground', layer: 4, path: 'v1772042102/window4_zesjs8.png', dx:   800, dy: -1500, targetH: 1.0 },
   { group: 'foreground', layer: 4, path: 'v1772042410/window5_qkby9s.png', dx:  -500, dy:  3000, targetH: 1.0 },
   { group: 'foreground', layer: 4, path: 'v1772042843/window6_pzbo0w.png', dx:  1200, dy:  2200, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772057385/window7_qeydvy.png', dx: -1600, dy: -1200, targetH: 1.0 },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
