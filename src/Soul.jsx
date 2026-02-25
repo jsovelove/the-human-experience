@@ -46,14 +46,33 @@ const ASSETS = [
   { path: 'soul15_whnwwg', layer: 2, x:  1950, y: -125, targetH: 0.39, num:  3 },
   { path: 'soul12_oif5tw', layer: 2, x:   320, y:  510, targetH: 0.37, num:  7 },
   { path: 'soul16_krs78i', layer: 2, x:  -840, y: -460, targetH: 0.41, num:  2 },
+  { path: 'v1771994908/IMG_5121_frgxw0.jpg',               layer: 2, x:  1220, y: -580, targetH: 0.44 },
+
+  // ── Layer 2 — screenshot cluster (pan down to discover) ──────────────────────
+  // All on the same layer so they stay together as a group
+  { path: 'v1771996789/Screenshot_2026-02-24_205925_b4jzml.png', layer: 2, x:  -980, y:  890, targetH: 0.33 },
+  { path: 'v1771996790/Screenshot_2026-02-24_210041_oppyct.png', layer: 2, x:  -320, y:  920, targetH: 0.33 },
+  { path: 'v1771996790/Screenshot_2026-02-24_210232_oz4lum.png', layer: 2, x:   340, y:  880, targetH: 0.33 },
+  { path: 'v1771996790/Screenshot_2026-02-24_210310_higf9w.png', layer: 2, x:  1000, y:  910, targetH: 0.33 },
+  { path: 'v1771996792/Screenshot_2026-02-24_210337_pzdock.png', layer: 2, x: -1050, y: 1520, targetH: 0.33 },
+  { path: 'v1771996792/Screenshot_2026-02-24_210418_xzgcsb.png', layer: 2, x:  -360, y: 1550, targetH: 0.33 },
+  { path: 'v1771996793/Screenshot_2026-02-24_210456_s6uabb.png', layer: 2, x:   320, y: 1510, targetH: 0.33 },
+  { path: 'v1771996794/Screenshot_2026-02-24_210525_kfcz9p.png', layer: 2, x:   990, y: 1540, targetH: 0.33 },
+  { path: 'v1771996794/Screenshot_2026-02-24_210608_ovjgdh.png', layer: 2, x:  -990, y: 2160, targetH: 0.33 },
+  { path: 'v1771996796/Screenshot_2026-02-24_210913_nxuykr.png', layer: 2, x:  -320, y: 2190, targetH: 0.33 },
+  { path: 'v1771996797/Screenshot_2026-02-24_210934_zbkred.png', layer: 2, x:   360, y: 2150, targetH: 0.33 },
+  { path: 'v1771996797/Screenshot_2026-02-24_211021_mlscrk.png', layer: 2, x:  1010, y: 2180, targetH: 0.33 },
+  { path: 'v1771996799/Screenshot_2026-02-24_211104_npbvoh.png', layer: 2, x:  -660, y: 2790, targetH: 0.33 },
+  { path: 'v1771996800/Screenshot_2026-02-24_211219_s2wnk7.png', layer: 2, x:    20, y: 2820, targetH: 0.33 },
+  { path: 'v1771996801/Screenshot_2026-02-24_211833_io0tas.png', layer: 2, x:   680, y: 2800, targetH: 0.33 },
 
   // ── Layer 3 — foreground / Past Lives (full speed) ───────────────────────────
   { path: 'v1769404831/Past_Lives_qyr4um.png',  layer: 3, x:  3350, y: -190, targetH: 0.44 },
   { path: 'v1769405868/Past_Lives_1_s0bdi8.png', layer: 3, x:  4150, y:   95, targetH: 0.50 },
-  { path: 'v1769405930/Past_Lives_2_dzag5e.png', layer: 3, x:  4920, y:  245, targetH: 0.34 },
-  { path: 'v1769405968/Past_Lives_3_iayzuy.png', layer: 3, x:  4920, y: -300, targetH: 0.34 },
-  { path: 'v1769795840/12_maagy5.png',           layer: 3, x:  5680, y: -195, targetH: 0.37 },
-  { path: 'v1769795594/13_vo83au.png',           layer: 3, x:  5680, y:  295, targetH: 0.37 },
+  { path: 'v1769405930/Past_Lives_2_dzag5e.png', layer: 3, x:  4920, y:  245, targetH: 0.54 },
+  { path: 'v1769405968/Past_Lives_3_iayzuy.png', layer: 3, x:  4920, y: -300, targetH: 0.54 },
+  { path: 'v1769795840/12_maagy5.png',           layer: 3, x:  5530, y:    0, targetH: 0.54 },
+  { path: 'v1769795594/13_vo83au.png',           layer: 3, x:  5830, y:    0, targetH: 0.54 },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -210,6 +229,23 @@ function Soul() {
       })
     })
 
+    // ── Trackpad / mouse wheel ────────────────────────────────────────────────
+    // deltaMode 0 = pixels (trackpad), 1 = lines (mouse wheel), 2 = page
+    const onWheel = (e) => {
+      e.preventDefault()
+      if (e.ctrlKey) return // pinch-to-zoom gesture — ignore
+
+      const mul = e.deltaMode === 0 ? 1 : e.deltaMode === 1 ? 20 : 300
+      const dx = -e.deltaX * mul
+      const dy = -e.deltaY * mul
+      layerContainers.forEach((c, i) => {
+        c.x += dx * LAYER_SPEEDS[i]
+        c.y += dy * LAYER_SPEEDS[i]
+      })
+    }
+    // passive:false required so preventDefault() actually suppresses page scroll
+    app.view.addEventListener('wheel', onWheel, { passive: false })
+
     // ── Resize handler ────────────────────────────────────────────────────────
     const onResize = () => {
       app.renderer.resize(window.innerWidth, window.innerHeight)
@@ -221,6 +257,7 @@ function Soul() {
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup',   onPointerUp)
       window.removeEventListener('resize',      onResize)
+      app.view.removeEventListener('wheel', onWheel)
       document.head.removeChild(style)
       document.body.style.overflow = ''
       app.destroy(true, { children: true, texture: true })
