@@ -88,7 +88,7 @@ const ASSETS = [
   { group: 'soulDiagram', layer: 3, path: 'soul15_whnwwg', dx:  1950, dy: -125, targetH: 0.39, num:  3 },
   { group: 'soulDiagram', layer: 3, path: 'soul12_oif5tw', dx:   320, dy:  510, targetH: 0.37, num:  7 },
   { group: 'soulDiagram', layer: 3, path: 'soul16_krs78i', dx:  -840, dy: -460, targetH: 0.41, num:  2 },
-  { group: 'soulDiagram', layer: 3, path: 'v1771994908/IMG_5121_frgxw0.jpg', dx: 1220, dy: -580, targetH: 0.44 },
+  { group: 'background',  layer: 0, path: 'v1771994908/IMG_5121_frgxw0.jpg', dx: 1220, dy: -580, targetH: 0.80 },
 
   // ── soulDrawings — Layer 3 (screenshot cluster, pan down to discover) ────────
   // dx / dy are relative to the soulDrawings anchor (-980, 890)
