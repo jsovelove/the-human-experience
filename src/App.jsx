@@ -128,7 +128,7 @@ function App() {
         <source src={backgroundVideo} type="video/mp4" />
       </video>
       <div className="content">
-        <Link to="/question" className="frame-link">
+        <Link to="/explore" className="frame-link">
           <img 
             src={frames[currentFrame]} 
             alt="The Human Experience"
