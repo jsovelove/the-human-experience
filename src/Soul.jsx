@@ -22,7 +22,7 @@ const GROUPS = {
   background:   { x:    0, y:    0, layers: [0]        }, // deepest layer — barely moves
   soulDiagram:  { x:    0, y:    0, layers: [1, 2, 3]  }, // centred on viewport
   soulDrawings: { x: -980, y:  890, layers: [3]        }, // screenshot cluster (pan down)
-  pastLives:    { x: 3350, y: 2810, layers: [4]        }, // far-right foreground
+  pastLives:    { x: 3350, y: 2810, layers: [3, 4]     }, // far-right — layer 3 = mid depth, layer 4 = foreground
   foreground:   { x:    0, y:    0, layers: [4]        }, // centred overlay — full drag speed
 }
 
@@ -114,11 +114,12 @@ const ASSETS = [
   // ── pastLives — Layer 4 (foreground, full speed) ──────────────────────────────
   // dx / dy are relative to the pastLives anchor (3350, -190)
   { group: 'pastLives', layer: 4, path: 'v1772058131/Past_Lives_qyr4um_qwquez.png',   dx:    0, dy:    0, targetH: 0.44 },
-  { group: 'pastLives', layer: 4, path: 'v1769405868/Past_Lives_1_s0bdi8.png', dx:  800, dy:  285, targetH: 0.50 },
-  { group: 'pastLives', layer: 4, path: 'v1769405930/Past_Lives_2_dzag5e.png', dx: 1570, dy:  435, targetH: 0.54 },
-  { group: 'pastLives', layer: 4, path: 'v1769405968/Past_Lives_3_iayzuy.png', dx: 1570, dy: -110, targetH: 0.54 },
+  { group: 'pastLives', layer: 4, path: 'v1772059402/first_life_hm_cxbrl8.jpg',        dx:  350, dy:  500, targetH: 0.18 },
+  { group: 'pastLives', layer: 3, path: 'v1769405868/Past_Lives_1_s0bdi8.png', dx:  -100, dy:  -600, targetH: 0.68 },
+  { group: 'pastLives', layer: 4, path: 'v1769405930/Past_Lives_2_dzag5e.png', dx: 1570, dy:  200, targetH: 0.54 },
   { group: 'pastLives', layer: 4, path: 'v1769795840/12_maagy5.png',           dx: 2180, dy:  190, targetH: 0.54 },
   { group: 'pastLives', layer: 4, path: 'v1769795594/13_vo83au.png',           dx: 2480, dy:  190, targetH: 0.54 },
+  { group: 'pastLives', layer: 4, path: 'v1772060389/a_i8c5fd.png',           dx:  1200, dy:  900, targetH: 1.0  },
 
   // ── foreground — Layer 4 (centred overlay, drawn last = on top of everything) ─
   // PNG with transparent window-pane cutouts — parallax layers show through the glass
