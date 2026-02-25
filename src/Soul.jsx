@@ -49,11 +49,11 @@ const ASSETS = [
   { group: 'background', layer: 0, path: 'v1772036438/9cd0390853ca36d1286cc4967ee05a41_sutwjd.jpg', dx: -825, dy: -560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036438/3b42cd9d826e3ecfc9389c2dd9cf6f9d_dz2pyn.jpg', dx: -275, dy: -560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036439/51b2a05f1f11115489e144a931d5caf1_ozlpew.jpg', dx:  275, dy: -560, targetH: 0.65 },
-  { group: 'background', layer: 0, path: 'v1772036438/4defa773ed471aca4d2a3945f63bfdd9_c8ztdl.jpg', dx:  825, dy: -560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036438/4defa773ed471aca4d2a3945f63bfdd9_c8ztdl.jpg', dx: 1100, dy: -560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036439/5225d159a639eb7f2773a53ab8473d22_zwyc6g.jpg', dx: -550, dy:    0, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036439/b42ec538689019b9d07c430d17e6c3ea_zz2hsw.jpg', dx:    0, dy:    0, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036439/079859c663b1d61648ce619c3daeba6e_lx0ryt.jpg', dx:  550, dy:    0, targetH: 0.65 },
-  { group: 'background', layer: 0, path: 'v1772036439/5ad4c0c3e5a177f3a98482cae8c83b31_hoea6e.jpg', dx: -825, dy:  560, targetH: 0.65 },
+  { group: 'background', layer: 0, path: 'v1772036439/5ad4c0c3e5a177f3a98482cae8c83b31_hoea6e.jpg', dx: -1450, dy:  560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036439/00305d0250d13cb9381d027a36cd3f5f_oe86qj.jpg', dx: -275, dy:  560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036440/479364c91549c324e403049852c412e4_ku5xiv.jpg', dx:  275, dy:  560, targetH: 0.65 },
   { group: 'background', layer: 0, path: 'v1772036574/a2e78f2637b50f35aed85951450d939f_tz2vwi.jpg', dx:  825, dy:  560, targetH: 0.65 },
@@ -64,7 +64,7 @@ const ASSETS = [
   { group: 'background', layer: 0, path: 'v1772037635/5dcf75ad9e2b8feeb22dec07f0adafaf_tmxeqc.jpg', dx:  150, dy: -380, targetH: 0.37 },
   { group: 'background', layer: 0, path: 'v1772037635/2b05ebea87c2397ac6bdb8fb8b171f13_i3avqj.jpg', dx:  680, dy:  180, targetH: 0.37 },
   { group: 'background', layer: 0, path: 'v1772037634/9339046ee36f6c8d7b01ff56bdcee231_ysvkfc.jpg', dx: -180, dy:  400, targetH: 0.37 },
-  { group: 'background', layer: 0, path: 'v1772037635/498f79902d0503c09bb35655f1858f91_szli5o.jpg', dx: -620, dy:  200, targetH: 0.37 },
+  { group: 'background', layer: 0, path: 'v1772037635/498f79902d0503c09bb35655f1858f91_szli5o.jpg', dx: -1200, dy:  100, targetH: 0.37 },
 
   // ── soulDiagram — Layer 1 (slow background) ──────────────────────────────────
   { group: 'soulDiagram', layer: 1, path: 'soul17_xzycho', dx: -2900, dy: -320, targetH: 0.27, num:  1 },
@@ -88,7 +88,8 @@ const ASSETS = [
   { group: 'soulDiagram', layer: 3, path: 'soul15_whnwwg', dx:  1950, dy: -125, targetH: 0.39, num:  3 },
   { group: 'soulDiagram', layer: 3, path: 'soul12_oif5tw', dx:   320, dy:  510, targetH: 0.37, num:  7 },
   { group: 'soulDiagram', layer: 3, path: 'soul16_krs78i', dx:  -840, dy: -460, targetH: 0.41, num:  2 },
-  { group: 'background',  layer: 0, path: 'v1771994908/IMG_5121_frgxw0.jpg', dx: 1220, dy: -580, targetH: 0.80 },
+  { group: 'background',  layer: 0, path: 'v1772056574/IMG_5118_inverted_v1m1sv.jpg', dx:  650, dy: -580, targetH: 0.80 },
+  { group: 'background',  layer: 0, path: 'v1772056824/IMG_5110_inverted_ohjxhh.jpg',  dx: -950, dy:  380, targetH: 0.80 },
 
   // ── soulDrawings — Layer 3 (screenshot cluster, pan down to discover) ────────
   // dx / dy are relative to the soulDrawings anchor (-980, 890)
