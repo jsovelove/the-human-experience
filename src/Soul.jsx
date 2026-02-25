@@ -122,7 +122,10 @@ const ASSETS = [
   // PNG with transparent window-pane cutouts — parallax layers show through the glass
   { group: 'foreground', layer: 4, path: 'v1772041109/a_bb2cri.png',      dx:    0, dy:    0, targetH: 1.0 },
   { group: 'foreground', layer: 4, path: 'v1772041421/window2_uqqqeu.png', dx: 1599, dy:  880, targetH: 1.0 },
-  { group: 'foreground', layer: 4, path: 'v1772041719/window3_rqju8h.png', dx: -1800, dy:  550, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772041719/window3_rqju8h.png', dx: -2000, dy:  550, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772042102/window4_zesjs8.png', dx:   800, dy: -1500, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772042410/window5_qkby9s.png', dx:  -500, dy:  3000, targetH: 1.0 },
+  { group: 'foreground', layer: 4, path: 'v1772042843/window6_pzbo0w.png', dx:  1200, dy:  2200, targetH: 1.0 },
 ]
 
 // ─────────────────────────────────────────────────────────────────────────────
