@@ -2,6 +2,7 @@ import './App.css'
 import { Link } from 'react-router-dom'
 import { useEffect, useRef } from 'react'
 import * as PIXI from 'pixi.js'
+import { createNoise3D } from 'simplex-noise'
 
 // ─── Cloudinary helpers ────────────────────────────────────────────────────────
 const CLOUD = 'https://res.cloudinary.com/dgbrj4suu/image/upload'
@@ -192,6 +193,109 @@ function Soul() {
       return c
     })
 
+    // ── Animated topographic contour (simplex noise + marching squares) ─────────
+    // Renders in layer 1 (speed 0.12) behind all soul-diagram sprites.
+    // Thin warm lines evolve slowly over time, creating a living terrain feel.
+    const noise3D      = createNoise3D()
+    const contourGfx   = new PIXI.Graphics()
+    contourGfx.x = W / 2
+    contourGfx.y = H / 2
+    layerContainers[1].addChild(contourGfx) // added first → renders behind layer-1 sprites
+
+    const CT_STEP    = 85 * posScale   // grid cell size in world px
+    const CT_EXTENT  = 3000 * posScale // half-width of noise field
+    const CT_NOISE_XY = 0.00085        // spatial frequency  (larger = tighter rings)
+    const CT_NOISE_T  = 0.00012        // temporal speed per frame at 60 fps
+    const CT_LEVELS   = [-0.4, -0.15, 0.15, 0.4] // noise thresholds → 4 contour bands
+    const CT_COLOR    = 0xd4c9b0       // warm bone/parchment
+    const CT_ALPHA    = 0.20
+    const CT_WIDTH    = 1.8
+
+    const ctCols = Math.ceil((CT_EXTENT * 2) / CT_STEP) + 2
+    const ctRows = Math.ceil((CT_EXTENT * 2) / CT_STEP) + 2
+    const ctGrid = new Float32Array(ctCols * ctRows)
+
+    // Marching-squares segment table
+    // Index bits: TL=8, TR=4, BR=2, BL=1   |   Edges: T=0, R=1, B=2, L=3
+    // Each entry = array of [edgeA, edgeB] pairs (one pair = one line segment)
+    const CT_SEGS = [
+      [],              // 0
+      [[2, 3]],        // 1  BL
+      [[1, 2]],        // 2  BR
+      [[1, 3]],        // 3  BR+BL
+      [[0, 1]],        // 4  TR
+      [[0, 1], [2, 3]],// 5  TR+BL  saddle
+      [[0, 2]],        // 6  TR+BR
+      [[0, 3]],        // 7  TR+BR+BL
+      [[0, 3]],        // 8  TL
+      [[0, 2]],        // 9  TL+BL
+      [[0, 3], [1, 2]],// 10 TL+BR  saddle
+      [[0, 1]],        // 11 TL+BR+BL
+      [[1, 3]],        // 12 TL+TR
+      [[1, 2]],        // 13 TL+TR+BL
+      [[2, 3]],        // 14 TL+TR+BR
+      [],              // 15
+    ]
+
+    // Interpolate the exact contour crossing on a cell edge
+    // Edges: 0=Top(TL→TR), 1=Right(TR→BR), 2=Bottom(BR→BL), 3=Left(BL→TL)
+    function ctEdgePt(edge, x0, y0, x1, y1, vtl, vtr, vbr, vbl, lvl) {
+      switch (edge) {
+        case 0: { const d = vtr - vtl; const t = d ? (lvl - vtl) / d : 0.5; return [x0 + t * (x1 - x0), y0] }
+        case 1: { const d = vbr - vtr; const t = d ? (lvl - vtr) / d : 0.5; return [x1, y0 + t * (y1 - y0)] }
+        case 2: { const d = vbl - vbr; const t = d ? (lvl - vbr) / d : 0.5; return [x1 + t * (x0 - x1), y1] }
+        case 3: { const d = vtl - vbl; const t = d ? (lvl - vbl) / d : 0.5; return [x0, y1 + t * (y0 - y1)] }
+        default: return [x0, y0]
+      }
+    }
+
+    let ctTime  = 0
+    let ctFrame = 0
+
+    app.ticker.add((delta) => {
+      ctFrame++
+      if (ctFrame % 3 !== 0) return   // update every 3 frames for performance
+      ctTime += CT_NOISE_T * delta * 3
+
+      // 1. Fill noise grid
+      for (let r = 0; r < ctRows; r++) {
+        for (let c = 0; c < ctCols; c++) {
+          const wx = (-CT_EXTENT + c * CT_STEP) * CT_NOISE_XY
+          const wy = (-CT_EXTENT + r * CT_STEP) * CT_NOISE_XY
+          ctGrid[r * ctCols + c] = noise3D(wx, wy, ctTime)
+        }
+      }
+
+      // 2. March squares and draw contours
+      contourGfx.clear()
+      CT_LEVELS.forEach((lvl) => {
+        contourGfx.lineStyle(CT_WIDTH, CT_COLOR, CT_ALPHA)
+        for (let r = 0; r < ctRows - 1; r++) {
+          for (let c = 0; c < ctCols - 1; c++) {
+            const x0 = -CT_EXTENT + c * CT_STEP
+            const y0 = -CT_EXTENT + r * CT_STEP
+            const x1 = x0 + CT_STEP
+            const y1 = y0 + CT_STEP
+
+            const vtl = ctGrid[r       * ctCols + c    ]
+            const vtr = ctGrid[r       * ctCols + c + 1]
+            const vbr = ctGrid[(r + 1) * ctCols + c + 1]
+            const vbl = ctGrid[(r + 1) * ctCols + c    ]
+
+            const idx = (vtl > lvl ? 8 : 0) | (vtr > lvl ? 4 : 0) |
+                        (vbr > lvl ? 2 : 0) | (vbl > lvl ? 1 : 0)
+
+            for (const [eA, eB] of CT_SEGS[idx]) {
+              const [ax, ay] = ctEdgePt(eA, x0, y0, x1, y1, vtl, vtr, vbr, vbl, lvl)
+              const [bx, by] = ctEdgePt(eB, x0, y0, x1, y1, vtl, vtr, vbr, vbl, lvl)
+              contourGfx.moveTo(ax, ay)
+              contourGfx.lineTo(bx, by)
+            }
+          }
+        }
+      })
+    })
+
     // ── Group sub-containers ──────────────────────────────────────────────────
     // groupContainers[groupName][layerIndex] = PIXI.Container
     // Each sub-container is positioned at its group's world-space anchor.
@@ -201,7 +305,7 @@ function Soul() {
       groupContainers[name] = {}
       g.layers.forEach((li) => {
         const gc = new PIXI.Container()
-        gc.x = W / 2 + g.x * posScale
+        gc.x = W / 2 + g.x * posScale 
         gc.y = H / 2 + g.y * posScale
         layerContainers[li].addChild(gc)
         groupContainers[name][li] = gc
