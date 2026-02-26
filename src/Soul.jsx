@@ -6,8 +6,16 @@ import { createNoise3D } from 'simplex-noise'
 
 // ─── Cloudinary helpers ────────────────────────────────────────────────────────
 const CLOUD = 'https://res.cloudinary.com/dgbrj4suu/image/upload'
-// w_1200 keeps GPU memory reasonable; q_auto/f_auto = smart compression + format
-const imgUrl = (path) => `${CLOUD}/w_1200,q_auto,f_auto/${path}`
+// Request only as many pixels as the asset will actually render at.
+// targetH is the asset's fraction of viewport height; we derive a width tier from it.
+const imgWidth = (targetH) => {
+  if (targetH < 0.30) return 500
+  if (targetH < 0.55) return 750
+  if (targetH < 0.75) return 1000
+  return 1200
+}
+const imgUrl = (path, targetH = 1.0) =>
+  `${CLOUD}/w_${imgWidth(targetH)},q_auto,f_auto/${path}`
 
 // ─── Layer speeds (parallax multipliers) ──────────────────────────────────────
 // 0 = far background (moves barely), 1.0 = foreground (moves at full drag speed)
@@ -317,7 +325,7 @@ function Soul() {
       const gc = groupContainers[asset.group][asset.layer]
       const targetHeightPx = H * asset.targetH
 
-      const sprite = PIXI.Sprite.from(imgUrl(asset.path))
+      const sprite = PIXI.Sprite.from(imgUrl(asset.path, asset.targetH))
       sprite.anchor.set(0.5, 0.5)
       sprite.x = asset.dx * posScale   // relative to the group sub-container
       sprite.y = asset.dy * posScale
